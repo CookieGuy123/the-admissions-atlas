@@ -508,10 +508,10 @@ app.use(cors());
     }
   });
 
-  // API Route: Get Scholarships list (auto-purges expired entries)
+  // API Route: Get Scholarships list (clean defaults for all users)
   app.get(["/api/scholarships", "/scholarships"], (req, res) => {
-    purgeExpiredOpportunities();
-    res.json(dynamicScholarships);
+    const activeDefaults = defaultScholarships.filter(s => !isExpired(s.deadline));
+    res.json(activeDefaults);
   });
 
   // API Route: Use Gemini with Google Search tool to search and verify scholarships
@@ -647,10 +647,10 @@ Return only the json block with no other conversational markdown text. REMEMBER:
   });
 
 
-  // API Route: Get Internships list (auto-purges expired entries)
+  // API Route: Get Internships list (clean defaults for all users)
   app.get(["/api/internships", "/internships"], (req, res) => {
-    purgeExpiredOpportunities();
-    res.json(dynamicInternships);
+    const activeDefaults = defaultInternships.filter(i => !isExpired(i.deadline));
+    res.json(activeDefaults);
   });
 
   // API Route: Use Gemini with Google Search tool to search and verify internships

@@ -47,7 +47,7 @@ export interface Internship {
   lastVerifiedAt?: string;
 }
 
-// ── Supabase clients (Safe initialization) ───────────────────────────────
+// ── Supabase clients ──────────────────────────────────────────────────────
 const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || "";
@@ -72,7 +72,7 @@ try {
   console.warn("[Supabase Server] Init skipped:", e?.message);
 }
 
-// ── Default Listings ──────────────────────────────────────────────────────
+// ── Standard Pre-Seeded Listings ──────────────────────────────────────────
 const defaultScholarships: Scholarship[] = [
   {
     id: "sch-gates", name: "The Gates Scholarship",
@@ -206,43 +206,11 @@ const defaultInternships: Internship[] = [
   }
 ];
 
-const collegeProfiles = [
-  { id: "col-harvard", name: "Harvard University", tier: "Ivy League", specialization: "General", location: "Cambridge, MA", tuition: 82500, rate: 4 },
-  { id: "col-yale", name: "Yale University", tier: "Ivy League", specialization: "General", location: "New Haven, CT", tuition: 83800, rate: 5 },
-  { id: "col-princeton", name: "Princeton University", tier: "Ivy League", specialization: "General", location: "Princeton, NJ", tuition: 82900, rate: 6 },
-  { id: "col-columbia", name: "Columbia University", tier: "Ivy League", specialization: "General", location: "New York, NY", tuition: 85200, rate: 4 },
-  { id: "col-mit", name: "MIT", tier: "Top Engineering", specialization: "Engineering", location: "Cambridge, MA", tuition: 80500, rate: 4 },
-  { id: "col-caltech", name: "Caltech", tier: "Top Engineering", specialization: "Engineering", location: "Pasadena, CA", tuition: 81200, rate: 3 },
-  { id: "col-jhu", name: "Johns Hopkins University", tier: "Specialized Health", specialization: "Health", location: "Baltimore, MD", tuition: 81900, rate: 7 },
-  { id: "col-stanford", name: "Stanford University", tier: "Top Engineering", specialization: "Engineering", location: "Stanford, CA", tuition: 82400, rate: 4 },
-  { id: "col-berkeley", name: "UC Berkeley", tier: "Top Public", specialization: "Engineering", location: "Berkeley, CA", tuition: 46500, rate: 11 },
-  { id: "col-williams", name: "Williams College", tier: "Top Liberal Arts", specialization: "Arts", location: "Williamstown, MA", tuition: 79200, rate: 8 },
-  { id: "col-gatech", name: "Georgia Tech", tier: "Top Public", specialization: "Engineering", location: "Atlanta, GA", tuition: 34800, rate: 16 },
-  { id: "col-wharton", name: "UPenn (Wharton)", tier: "Ivy League", specialization: "Business", location: "Philadelphia, PA", tuition: 84600, rate: 6 },
-  { id: "col-umich", name: "University of Michigan", tier: "Top Public", specialization: "Engineering", location: "Ann Arbor, MI", tuition: 57200, rate: 18 },
-  { id: "col-georgetown", name: "Georgetown University", tier: "Top Public", specialization: "Business", location: "Washington, DC", tuition: 81500, rate: 12 },
-];
-
-let dynamicScholarships: Scholarship[] = [...defaultScholarships];
-let dynamicInternships: Internship[] = [...defaultInternships];
-
 function isExpired(deadlineStr: string): boolean {
   if (!deadlineStr || deadlineStr === "Rolling" || deadlineStr === "Recurring" || deadlineStr === "None") return false;
   const todayStr = new Date().toISOString().split("T")[0];
   return deadlineStr < todayStr;
 }
-
-function purgeExpiredOpportunities(): { purgedScholarships: number; purgedInternships: number } {
-  const initialSchCount = dynamicScholarships.length;
-  const initialIntCount = dynamicInternships.length;
-  dynamicScholarships = dynamicScholarships.filter(s => !isExpired(s.deadline));
-  dynamicInternships = dynamicInternships.filter(i => !isExpired(i.deadline));
-  const purgedScholarships = initialSchCount - dynamicScholarships.length;
-  const purgedInternships = initialIntCount - dynamicInternships.length;
-  return { purgedScholarships, purgedInternships };
-}
-
-purgeExpiredOpportunities();
 
 const MAX_QUERY_LENGTH = 500;
 const MAX_RESUME_LENGTH = 50000;
@@ -263,15 +231,14 @@ app.set("trust proxy", 1);
 app.use(cors());
 app.use(express.json({ limit: "100kb" }));
 
-// GET scholarships
+// GET scholarships — Always returns clean pre-seeded default list for all users
 app.get(["/api/scholarships", "/scholarships"], (_req, res) => {
-  purgeExpiredOpportunities();
-  res.json(dynamicScholarships);
+  const activeDefaults = defaultScholarships.filter(s => !isExpired(s.deadline));
+  res.json(activeDefaults);
 });
 
-// POST scholarships/update
+// POST scholarships/update — Performs AI Search & returns new items without mutating server state for other users
 app.post(["/api/scholarships/update", "/scholarships/update"], async (req, res) => {
-  purgeExpiredOpportunities();
   const rawQuery = sanitizeInput(req.body?.searchQuery, MAX_QUERY_LENGTH);
   const query = rawQuery || "reputable high school seniors and college student scholarships 2026 2027";
   const safeQuery = containUserText(query);
@@ -282,7 +249,7 @@ app.post(["/api/scholarships/update", "/scholarships/update"], async (req, res) 
     return res.json({
       success: false,
       error: "GEMINI_API_KEY is not configured in environment variables. Showing pre-seeded listings.",
-      scholarships: dynamicScholarships
+      newScholarships: []
     });
   }
 
@@ -290,7 +257,45 @@ app.post(["/api/scholarships/update", "/scholarships/update"], async (req, res) 
     const ai = new GoogleGenAI({ apiKey: geminiKey });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Search assistant for scholarships. Query: ${safeQuery}. Today: ${todayStr}. Return JSON array of active scholarships with deadlines > ${todayStr}.`,
+      contents: `You are a helpful scholarship search assistant. Generate a list of legitimate, currently open or upcoming scholarships matching the user's request below.
+
+<USER_INPUT>${safeQuery}</USER_INPUT>
+
+TODAY IS ${todayStr}. Identify at least 3 real active opportunities. For EACH scholarship, extract:
+1. name
+2. organization
+3. amount (e.g. "$5,000 total")
+4. amountNumeric (e.g. 5000)
+5. deadline (as YYYY-MM-DD or "Recurring")
+6. studentLevel ("high_school", "college", or "both")
+7. ageFilter (e.g. "Under 19" or "None")
+8. requirements (array of strings)
+9. sourceUrl
+10. fieldOfStudy
+
+Format the response EXACTLY as a raw JSON array of objects conforming to this template:
+\`\`\`json
+[
+  {
+    "id": "sch-ai-1",
+    "name": "Scholarship Name",
+    "organization": "Sponsoring Org",
+    "amount": "$5,000 total",
+    "amountNumeric": 5000,
+    "deadline": "2026-12-15",
+    "studentLevel": "high_school",
+    "ageFilter": "Age 16-24",
+    "isFree": true,
+    "scamFlag": false,
+    "scamReason": "",
+    "requirements": ["GPA 3.0+"],
+    "isVerified": true,
+    "fieldOfStudy": "STEM",
+    "sourceUrl": "https://..."
+  }
+]
+\`\`\`
+Return ONLY the JSON array.`,
       config: { responseMimeType: "application/json", temperature: 0.1 }
     });
 
@@ -304,53 +309,43 @@ app.post(["/api/scholarships/update", "/scholarships/update"], async (req, res) 
 
     if (!Array.isArray(parsed)) throw new Error("AI response was not an array");
 
-    const valid = parsed.filter((s: any) => s.deadline >= todayStr || s.deadline === "Recurring");
-    valid.forEach((newSch: any, idx: number) => {
-      const formatted: Scholarship = {
-        id: newSch.id || `sch-ai-${Date.now()}-${idx}`,
-        name: newSch.name || "Scholarship",
-        organization: newSch.organization || "Sponsor",
-        amount: newSch.amount || "$1,000",
-        amountNumeric: newSch.amountNumeric || 1000,
-        deadline: newSch.deadline || "2026-12-31",
-        studentLevel: newSch.studentLevel || "both",
-        ageFilter: newSch.ageFilter || "All eligible",
-        isFree: newSch.isFree ?? true,
-        scamFlag: !!newSch.scamFlag,
-        scamReason: newSch.scamReason || "",
-        requirements: Array.isArray(newSch.requirements) ? newSch.requirements : [],
-        isVerified: !newSch.scamFlag,
-        fieldOfStudy: newSch.fieldOfStudy || "Any",
-        sourceUrl: newSch.sourceUrl || "https://google.com",
-        originalQuery: query,
-        isNew: true,
-        deadlineType: newSch.deadline === "Recurring" ? "recurring" : "estimated",
-        lastVerifiedAt: todayStr
-      };
+    const valid = parsed.filter((s: any) => !s.deadline || s.deadline >= todayStr || s.deadline === "Recurring");
+    const newItems: Scholarship[] = valid.map((newSch: any, idx: number) => ({
+      id: newSch.id || `sch-ai-${Date.now()}-${idx}`,
+      name: newSch.name || "Scholarship",
+      organization: newSch.organization || "Sponsor",
+      amount: newSch.amount || "$1,000",
+      amountNumeric: newSch.amountNumeric || 1000,
+      deadline: newSch.deadline || "2026-12-31",
+      studentLevel: newSch.studentLevel || "both",
+      ageFilter: newSch.ageFilter || "All eligible",
+      isFree: newSch.isFree ?? true,
+      scamFlag: !!newSch.scamFlag,
+      scamReason: newSch.scamReason || "",
+      requirements: Array.isArray(newSch.requirements) ? newSch.requirements : [],
+      isVerified: !newSch.scamFlag,
+      fieldOfStudy: newSch.fieldOfStudy || "Any",
+      sourceUrl: newSch.sourceUrl || "https://google.com",
+      originalQuery: query,
+      isNew: true,
+      deadlineType: newSch.deadline === "Recurring" ? "recurring" : "estimated",
+      lastVerifiedAt: todayStr
+    }));
 
-      const dupIdx = dynamicScholarships.findIndex(e => e.name.toLowerCase() === formatted.name.toLowerCase());
-      if (dupIdx >= 0) {
-        dynamicScholarships[dupIdx] = { ...dynamicScholarships[dupIdx], ...formatted, isNew: false };
-      } else {
-        dynamicScholarships.unshift(formatted);
-      }
-    });
-
-    res.json({ success: true, scholarships: dynamicScholarships, addedCount: valid.length });
+    res.json({ success: true, newScholarships: newItems, addedCount: newItems.length });
   } catch (e: any) {
-    res.json({ success: false, error: e?.message || "AI search failed", scholarships: dynamicScholarships });
+    res.json({ success: false, error: e?.message || "AI search failed", newScholarships: [] });
   }
 });
 
-// GET internships
+// GET internships — Always returns clean pre-seeded default list for all users
 app.get(["/api/internships", "/internships"], (_req, res) => {
-  purgeExpiredOpportunities();
-  res.json(dynamicInternships);
+  const activeDefaults = defaultInternships.filter(i => !isExpired(i.deadline));
+  res.json(activeDefaults);
 });
 
-// POST internships/update
+// POST internships/update — Performs AI Search for internships
 app.post(["/api/internships/update", "/internships/update"], async (req, res) => {
-  purgeExpiredOpportunities();
   const rawQuery = sanitizeInput(req.body?.searchQuery, MAX_QUERY_LENGTH);
   const query = rawQuery || "legitimate high school college internships 2026";
   const safeQuery = containUserText(query);
@@ -361,7 +356,7 @@ app.post(["/api/internships/update", "/internships/update"], async (req, res) =>
     return res.json({
       success: false,
       error: "GEMINI_API_KEY is not configured in environment variables. Showing pre-seeded listings.",
-      internships: dynamicInternships
+      newInternships: []
     });
   }
 
@@ -369,7 +364,44 @@ app.post(["/api/internships/update", "/internships/update"], async (req, res) =>
     const ai = new GoogleGenAI({ apiKey: geminiKey });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Search assistant for internships. Query: ${safeQuery}. Today: ${todayStr}. Return JSON array of active internships.`,
+      contents: `You are a helpful internship search assistant. Generate a list of legitimate, open or upcoming student internship positions matching the user's request below.
+
+<USER_INPUT>${safeQuery}</USER_INPUT>
+
+TODAY IS ${todayStr}. Identify at least 3 real active opportunities. For EACH internship, extract:
+1. title
+2. company
+3. location (e.g. Remote or City, State)
+4. type (Paid or Unpaid)
+5. deadline (as YYYY-MM-DD or "Rolling")
+6. studentLevel (undergrad, grad, high_school, or all)
+7. description
+8. requirements (array of strings)
+9. sourceUrl
+10. fieldOfStudy
+
+Format the response EXACTLY as a raw JSON array of objects conforming to this template:
+\`\`\`json
+[
+  {
+    "id": "int-ai-1",
+    "title": "Software Engineering Intern",
+    "company": "Company Name",
+    "location": "Remote or City, State",
+    "type": "Paid",
+    "deadline": "Rolling",
+    "studentLevel": "undergrad",
+    "description": "Brief description",
+    "requirements": ["STEM major", "Python"],
+    "isVerified": true,
+    "scamFlag": false,
+    "scamReason": "",
+    "sourceUrl": "https://...",
+    "fieldOfStudy": "Engineering"
+  }
+]
+\`\`\`
+Return ONLY the JSON array.`,
       config: { responseMimeType: "application/json", temperature: 0.1 }
     });
 
@@ -383,47 +415,37 @@ app.post(["/api/internships/update", "/internships/update"], async (req, res) =>
 
     if (!Array.isArray(parsed)) throw new Error("AI response was not an array");
 
-    const valid = parsed.filter((i: any) => i.deadline >= todayStr || i.deadline === "Rolling");
-    valid.forEach((newInt: any, idx: number) => {
-      const formatted: Internship = {
-        id: newInt.id || `int-ai-${Date.now()}-${idx}`,
-        title: newInt.title || "Internship",
-        company: newInt.company || "Company",
-        location: newInt.location || "Remote",
-        type: newInt.type || "Paid",
-        deadline: newInt.deadline || "Rolling",
-        studentLevel: newInt.studentLevel || "undergrad",
-        description: newInt.description || "",
-        requirements: Array.isArray(newInt.requirements) ? newInt.requirements : [],
-        isVerified: !newInt.scamFlag,
-        scamFlag: !!newInt.scamFlag,
-        scamReason: newInt.scamReason || "",
-        sourceUrl: newInt.sourceUrl || "https://google.com",
-        fieldOfStudy: newInt.fieldOfStudy || "General",
-        originalQuery: query,
-        isNew: true,
-        deadlineType: newInt.deadline === "Rolling" ? "rolling" : "estimated",
-        lastVerifiedAt: todayStr
-      };
+    const valid = parsed.filter((i: any) => !i.deadline || i.deadline >= todayStr || i.deadline === "Rolling" || i.deadline === "Recurring");
+    const newItems: Internship[] = valid.map((newInt: any, idx: number) => ({
+      id: newInt.id || `int-ai-${Date.now()}-${idx}`,
+      title: newInt.title || "Internship Position",
+      company: newInt.company || "Employer Company",
+      location: newInt.location || "Remote / US",
+      type: newInt.type || "Paid",
+      deadline: newInt.deadline || "Rolling",
+      studentLevel: newInt.studentLevel || "undergrad",
+      description: newInt.description || "Exciting internship opportunity.",
+      requirements: Array.isArray(newInt.requirements) ? newInt.requirements : [],
+      isVerified: !newInt.scamFlag,
+      scamFlag: !!newInt.scamFlag,
+      scamReason: newInt.scamReason || "",
+      sourceUrl: newInt.sourceUrl || "https://google.com",
+      fieldOfStudy: newInt.fieldOfStudy || "Engineering",
+      originalQuery: query,
+      isNew: true,
+      deadlineType: newInt.deadline === "Rolling" ? "rolling" : "estimated",
+      lastVerifiedAt: todayStr
+    }));
 
-      const dupIdx = dynamicInternships.findIndex(e => e.title.toLowerCase() === formatted.title.toLowerCase());
-      if (dupIdx >= 0) {
-        dynamicInternships[dupIdx] = { ...dynamicInternships[dupIdx], ...formatted, isNew: false };
-      } else {
-        dynamicInternships.unshift(formatted);
-      }
-    });
-
-    res.json({ success: true, internships: dynamicInternships, addedCount: valid.length });
+    res.json({ success: true, newInternships: newItems, addedCount: newItems.length });
   } catch (e: any) {
-    res.json({ success: false, error: e?.message || "AI search failed", internships: dynamicInternships });
+    res.json({ success: false, error: e?.message || "AI search failed", newInternships: [] });
   }
 });
 
 // POST purge
 app.post(["/api/opportunities/purge", "/opportunities/purge"], (_req, res) => {
-  const result = purgeExpiredOpportunities();
-  res.json({ success: true, ...result, scholarships: dynamicScholarships, internships: dynamicInternships });
+  res.json({ success: true, purgedScholarships: 0, purgedInternships: 0 });
 });
 
 // POST verify-deadline
@@ -432,17 +454,11 @@ app.post(["/api/opportunities/verify-deadline", "/opportunities/verify-deadline"
   const todayStr = new Date().toISOString().split("T")[0];
 
   if (type === "scholarship") {
-    const item = dynamicScholarships.find(s => s.id === id);
-    if (!item) return res.status(404).json({ error: "Scholarship not found" });
-    item.lastVerifiedAt = todayStr;
-    item.deadlineType = item.deadline === "Recurring" ? "recurring" : "exact";
-    return res.json({ success: true, item });
+    const item = defaultScholarships.find(s => s.id === id);
+    return res.json({ success: true, item: item ? { ...item, lastVerifiedAt: todayStr } : { id, lastVerifiedAt: todayStr, deadlineType: "exact" } });
   } else {
-    const item = dynamicInternships.find(i => i.id === id);
-    if (!item) return res.status(404).json({ error: "Internship not found" });
-    item.lastVerifiedAt = todayStr;
-    item.deadlineType = item.deadline === "Rolling" ? "rolling" : "exact";
-    return res.json({ success: true, item });
+    const item = defaultInternships.find(i => i.id === id);
+    return res.json({ success: true, item: item ? { ...item, lastVerifiedAt: todayStr } : { id, lastVerifiedAt: todayStr, deadlineType: "rolling" } });
   }
 });
 
@@ -451,14 +467,9 @@ app.post(["/api/analyze-resume", "/analyze-resume"], (req, res) => {
   res.json({
     success: true,
     profile: { gpa: 3.8, gradeLevel: "high_school", majors: ["STEM"], skills: ["Leadership", "Writing"] },
-    scholarships: dynamicScholarships.slice(0, 5),
-    internships: dynamicInternships.slice(0, 5)
+    scholarships: defaultScholarships.slice(0, 5),
+    internships: defaultInternships.slice(0, 5)
   });
-});
-
-// POST colleges/recommend
-app.post(["/api/colleges/recommend", "/colleges/recommend"], (req, res) => {
-  res.json({ matches: ["col-mit", "col-stanford"], suggestions: [] });
 });
 
 // Fallback error handler

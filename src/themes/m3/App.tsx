@@ -217,11 +217,35 @@ export default function App() {
       const wi = localStorage.getItem("aid_won_internships");
       const dn = localStorage.getItem("aid_dismissed_new");
       const pr = localStorage.getItem("aid_preferences");
+      const cs = localStorage.getItem("aid_custom_scholarships");
+      const ci = localStorage.getItem("aid_custom_internships");
       if (b) setBookmarked(JSON.parse(b));
       if (ws) setWonScholarships(JSON.parse(ws));
       if (wi) setWonInternships(JSON.parse(wi));
       if (dn) setDismissedNewIds(JSON.parse(dn));
       if (pr) setPreferences((p: UserPreferences) => ({ ...p, ...JSON.parse(pr) }));
+
+      if (cs) {
+        const customSch: Scholarship[] = JSON.parse(cs);
+        if (Array.isArray(customSch) && customSch.length > 0) {
+          setScholarships(prev => {
+            const existing = new Set(prev.map(s => s.id));
+            const unique = customSch.filter(s => !existing.has(s.id));
+            return [...unique, ...prev];
+          });
+        }
+      }
+
+      if (ci) {
+        const customInt: Internship[] = JSON.parse(ci);
+        if (Array.isArray(customInt) && customInt.length > 0) {
+          setInternships(prev => {
+            const existing = new Set(prev.map(i => i.id));
+            const unique = customInt.filter(i => !existing.has(i.id));
+            return [...unique, ...prev];
+          });
+        }
+      }
     } catch {}
     // Also load from cloud for logged-in users
     loadDataFromCloud();
@@ -287,17 +311,26 @@ export default function App() {
       const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ searchQuery: aiSearchQuery }) });
       const data = await res.json();
 
-      if (aiSearchType === "scholarships" && data.scholarships) {
+      const schItems: Scholarship[] = data.newScholarships || data.scholarships || [];
+      const intItems: Internship[] = data.newInternships || data.internships || [];
+
+      if (aiSearchType === "scholarships" && schItems.length > 0) {
         setScholarships(prev => {
           const existing = new Set(prev.map(s => s.id));
-          const merged = data.scholarships.filter((s: Scholarship) => !existing.has(s.id)).map((s: Scholarship) => ({ ...s, isNew: true }));
-          return [...merged, ...prev];
+          const merged = schItems.filter((s: Scholarship) => !existing.has(s.id)).map((s: Scholarship) => ({ ...s, isNew: true }));
+          const updated = [...merged, ...prev];
+          const custom = updated.filter(s => !defaultScholarships.some(ds => ds.id === s.id));
+          try { localStorage.setItem("aid_custom_scholarships", JSON.stringify(custom)); } catch {}
+          return updated;
         });
-      } else if (aiSearchType === "internships" && data.internships) {
+      } else if (aiSearchType === "internships" && intItems.length > 0) {
         setInternships(prev => {
           const existing = new Set(prev.map(i => i.id));
-          const merged = data.internships.filter((i: Internship) => !existing.has(i.id)).map((i: Internship) => ({ ...i, isNew: true }));
-          return [...merged, ...prev];
+          const merged = intItems.filter((i: Internship) => !existing.has(i.id)).map((i: Internship) => ({ ...i, isNew: true }));
+          const updated = [...merged, ...prev];
+          const custom = updated.filter(i => !defaultInternships.some(di => di.id === i.id));
+          try { localStorage.setItem("aid_custom_internships", JSON.stringify(custom)); } catch {}
+          return updated;
         });
       }
 
