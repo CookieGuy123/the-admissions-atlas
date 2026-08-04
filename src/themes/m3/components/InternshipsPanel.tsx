@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Search, Bookmark, Award, ExternalLink, Plus, Sparkles, X, ArrowUpDown, RotateCcw, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import type { Internship, Scholarship, UserProfile } from "../../../types";
+import { apiFetch } from "../../../lib/api";
 
 interface Props {
   internships: Internship[];
@@ -59,7 +60,7 @@ export default function InternshipsPanel({ internships, setInternships, isBookma
   const verifyDeadline = async (id: string) => {
     setVerifyingId(id);
     try {
-      const res = await fetch("/api/opportunities/verify-deadline", {
+      const res = await apiFetch("/api/opportunities/verify-deadline", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, type: "internship" })

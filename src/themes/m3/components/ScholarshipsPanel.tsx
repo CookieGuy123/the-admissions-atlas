@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Search, Bookmark, Award, ExternalLink, Plus, Sparkles, X, ArrowUpDown, RotateCcw, AlertCircle, CheckCircle2, RefreshCw, Filter } from "lucide-react";
 import type { Scholarship, Internship, UserProfile } from "../../../types";
+import { apiFetch } from "../../../lib/api";
 
 const levelLabels: Record<string, string> = { high_school: "High School", college: "College", both: "Both", graduate: "Graduate" };
 
@@ -61,7 +62,7 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
   const verifyDeadline = async (id: string) => {
     setVerifyingId(id);
     try {
-      const res = await fetch("/api/opportunities/verify-deadline", {
+      const res = await apiFetch("/api/opportunities/verify-deadline", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, type: "scholarship" })

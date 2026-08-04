@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { User, Bookmark, Award, RotateCcw, Edit3, Palette, Sun, Moon, Maximize2, Minimize2, Shield, ArrowUp, ArrowDown } from "lucide-react";
 import type { UserProfile, UserPreferences, Scholarship, Internship, BookmarkedOpportunity } from "../../../types";
 import { supabase } from "../../../supabaseClient";
+import { apiFetch } from "../../../lib/api";
 
 interface Props {
   user: any;
@@ -35,7 +36,7 @@ export default function ProfilePanel({ user, profile, setProfile, preferences, s
   const handleAdminUpgrade = async () => {
     if (!adminCode.trim()) return;
     try {
-      const res = await fetch("/api/auth/upgrade-admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id, code: adminCode }) });
+      const res = await apiFetch("/api/auth/upgrade-admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id, code: adminCode }) });
       const data = await res.json();
       if (data.profile) {
         setProfile(data.profile);
@@ -112,7 +113,7 @@ export default function ProfilePanel({ user, profile, setProfile, preferences, s
               </div>
             )}
 
-            <button onClick={() => { if (confirm("Reset all data?")) fetch("/api/reset", { method: "POST" }).then(() => location.reload()); }}
+            <button onClick={() => { if (confirm("Reset all data?")) apiFetch("/api/reset", { method: "POST" }).then(() => location.reload()); }}
               className="m3-btn-outlined text-sm w-full py-2">
               <RotateCcw className="w-4 h-4" /> Reset Data
             </button>

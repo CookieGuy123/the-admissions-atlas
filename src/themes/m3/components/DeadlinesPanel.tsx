@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { MapPin, Calendar, DollarSign, Percent, University, Plus, X, Search, Calculator, Sparkles, Loader2 } from "lucide-react";
 import { collegesData } from "../../../data/colleges";
 import { supabase } from "../../../supabaseClient";
+import { apiFetch } from "../../../lib/api";
 
 interface Props {
   onSelectCollege?: (college: any) => void;
@@ -36,7 +37,7 @@ export default function DeadlinesPanel({ onSelectCollege }: Props) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        fetch(`/api/user/load-data?userId=${session.user.id}`).then(r => r.json()).then(d => {
+        apiFetch(`/api/user/load-data?userId=${session.user.id}`).then(r => r.json()).then(d => {
           if (d.success) {
             if (d.customColleges?.length) setCustomColleges(d.customColleges);
             if (d.suggestedColleges?.length) setSuggestedColleges(d.suggestedColleges);
@@ -53,7 +54,7 @@ export default function DeadlinesPanel({ onSelectCollege }: Props) {
       localStorage.setItem("aid_suggested_colleges", JSON.stringify(suggestedColleges));
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
-          fetch("/api/user/save-data", {
+          apiFetch("/api/user/save-data", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: session.user.id, customColleges, suggestedColleges })
@@ -68,7 +69,7 @@ export default function DeadlinesPanel({ onSelectCollege }: Props) {
     if (!aiQuery.trim()) return;
     setAiLoading(true);
     try {
-      const res = await fetch("/api/colleges/recommend", {
+      const res = await apiFetch("/api/colleges/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ interests: aiQuery })

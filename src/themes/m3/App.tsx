@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { apiFetch } from "../../lib/api";
 import { supabase } from "../../supabaseClient";
 import type { Scholarship, Internship, BookmarkedOpportunity, NotificationItem, UserPreferences, UserProfile } from "../../types";
 import ScholarshipsPanel from "./components/ScholarshipsPanel";
@@ -148,7 +149,7 @@ export default function App() {
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      const [schRes, intRes] = await Promise.all([fetch("/api/scholarships"), fetch("/api/internships")]);
+      const [schRes, intRes] = await Promise.all([apiFetch("/api/scholarships"), apiFetch("/api/internships")]);
       if (schRes.ok) {
         const schData = await schRes.json();
         if (Array.isArray(schData) && schData.length > 0) setScholarships(schData);
@@ -177,7 +178,7 @@ export default function App() {
   const saveDataToCloud = async () => {
     if (!user) return;
     try {
-      await fetch("/api/user/save-data", {
+      await apiFetch("/api/user/save-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -196,7 +197,7 @@ export default function App() {
   const loadDataFromCloud = async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/user/load-data?userId=${user.id}`);
+      const res = await apiFetch(`/api/user/load-data?userId=${user.id}`);
       const data = await res.json();
       if (data.success) {
         if (data.bookmarks?.length) setBookmarked(data.bookmarks);
@@ -308,7 +309,7 @@ export default function App() {
     setAiSearchLoading(true);
     try {
       const endpoint = aiSearchType === "scholarships" ? "/api/scholarships/update" : "/api/internships/update";
-      const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ searchQuery: aiSearchQuery }) });
+      const res = await apiFetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ searchQuery: aiSearchQuery }) });
       const data = await res.json();
 
       const schItems: Scholarship[] = data.newScholarships || data.scholarships || [];

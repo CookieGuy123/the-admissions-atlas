@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Upload, FileText, Loader2, X, AlertTriangle, CheckCircle, Search } from "lucide-react";
+import { apiFetch } from "../../../lib/api";
 
 interface Props {
   onClose: () => void;
@@ -37,7 +38,7 @@ export default function ResumeScannerModal({ onClose, onData, data }: Props) {
     setError(null); setFileName(file.name); setUploading(true);
     try {
       const text = await extractText(file);
-      const res = await fetch("/api/analyze-resume", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resumeText: text }) });
+      const res = await apiFetch("/api/analyze-resume", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resumeText: text }) });
       const result = await res.json();
       if (result.success) onData(result);
       else setError(result.error || "Analysis failed.");
