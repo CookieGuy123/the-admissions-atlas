@@ -125,29 +125,31 @@ export default function InternshipsPanel({ internships, setInternships, isBookma
 
       <div className="m3-card p-3 mb-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex-1 min-w-[240px] relative">
+          <div className="w-full sm:flex-1 sm:min-w-[240px] relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               className="m3-field w-full pl-9" placeholder="Filter internships by title, company, or field..." />
           </div>
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} className="m3-select">
-            <option value="all">All types</option>
-            <option value="Paid">Paid</option>
-            <option value="Unpaid">Unpaid</option>
-          </select>
-          <label className="flex items-center gap-1.5 text-xs text-on-surface cursor-pointer px-2 py-1.5 rounded-lg bg-surface-dim/40 border border-surface-dim hover:bg-surface-dim/70 transition-colors">
-            <input type="checkbox" checked={hideExpired} onChange={e => setHideExpired(e.target.checked)} className="rounded text-primary focus:ring-0" />
-            <span>Hide Expired</span>
-          </label>
-          <button onClick={resetFilters} className="m3-btn-text p-1.5 text-on-surface-variant hover:text-primary" title="Reset all filters">
-            <RotateCcw className="w-4 h-4" />
-          </button>
-          <button onClick={onOpenAiSearch} className="m3-btn-filled text-sm px-4 py-2">
-            <Sparkles className="w-4 h-4" /> AI Search
-          </button>
-          <button onClick={() => setManualOpen(!manualOpen)} className="m3-btn-outlined text-sm px-4 py-2">
-            <Plus className="w-4 h-4" /> Add
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} className="m3-select flex-1 sm:flex-none">
+              <option value="all">All types</option>
+              <option value="Paid">Paid</option>
+              <option value="Unpaid">Unpaid</option>
+            </select>
+            <label className="flex items-center gap-1.5 text-xs text-on-surface cursor-pointer px-2 py-1.5 rounded-lg bg-surface-dim/40 border border-surface-dim hover:bg-surface-dim/70 transition-colors">
+              <input type="checkbox" checked={hideExpired} onChange={e => setHideExpired(e.target.checked)} className="rounded text-primary focus:ring-0" />
+              <span>Hide Expired</span>
+            </label>
+            <button onClick={resetFilters} className="m3-btn-text p-1.5 text-on-surface-variant hover:text-primary" title="Reset all filters">
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button onClick={onOpenAiSearch} className="m3-btn-filled text-sm px-4 py-2">
+              <Sparkles className="w-4 h-4" /> AI Search
+            </button>
+            <button onClick={() => setManualOpen(!manualOpen)} className="m3-btn-outlined text-sm px-4 py-2">
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          </div>
         </div>
       </div>
 
@@ -171,7 +173,8 @@ export default function InternshipsPanel({ internships, setInternships, isBookma
         </div>
       )}
 
-      <div className="m3-card overflow-x-auto">
+      {/* Desktop Table View (hidden on small mobile screens) */}
+      <div className="hidden sm:block m3-card overflow-x-auto">
         <table className="m3-table">
           <thead>
             <tr>
@@ -250,6 +253,73 @@ export default function InternshipsPanel({ internships, setInternships, isBookma
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card List (visible on mobile <640px) */}
+      <div className="block sm:hidden space-y-3">
+        {filtered.map(i => {
+          const expired = isItemExpired(i.deadline);
+          return (
+            <div key={i.id} className={`m3-card p-4 flex flex-col gap-2.5 ${expired ? "opacity-75 bg-error-container/5" : ""}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="text-xs text-on-surface-variant font-medium block">{i.company}</span>
+                  <h4 className="font-semibold text-on-surface text-base leading-tight mt-0.5">{i.title}</h4>
+                </div>
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                  i.type === "Paid" ? "bg-success-container text-success" : "bg-surface-dim text-on-surface-variant"
+                }`}>{i.type}</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {i.isNew && (
+                  <span onClick={() => dismissNew(i.id)} className="m3-badge m3-badge-new cursor-pointer">NEW</span>
+                )}
+                <span className="text-on-surface-variant">{i.location || "Remote"}</span>
+                <span className={`font-mono ${expired ? "text-error line-through font-semibold" : "text-on-surface-variant"}`}>
+                  Deadline: {fmtDate(i.deadline)}
+                </span>
+                {expired ? (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-error/10 text-error">EXPIRED</span>
+                ) : i.lastVerifiedAt ? (
+                  <span className="text-[10px] text-success flex items-center gap-0.5">
+                    <CheckCircle2 className="w-3 h-3 inline" /> Verified
+                  </span>
+                ) : null}
+                {i.fieldOfStudy && <span className="bg-surface-dim px-2 py-0.5 rounded text-on-surface-variant">{i.fieldOfStudy}</span>}
+              </div>
+
+              <div className="pt-2 border-t border-surface-dim flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1">
+                  <button onClick={() => toggleBookmark(i.id, "internship")}
+                    className={`m3-btn-text text-xs px-2.5 py-1.5 flex items-center gap-1 ${isBookmarked(i.id) ? "text-primary" : "text-on-surface-variant"}`}>
+                    <Bookmark className={`w-4 h-4 ${isBookmarked(i.id) ? "fill-primary" : ""}`} />
+                    <span>{isBookmarked(i.id) ? "Saved" : "Save"}</span>
+                  </button>
+                  <button onClick={() => toggleWon(i, "internship")}
+                    className={`m3-btn-text text-xs px-2.5 py-1.5 flex items-center gap-1 ${isWon(i.id) ? "text-secondary" : "text-on-surface-variant"}`}>
+                    <Award className={`w-4 h-4 ${isWon(i.id) ? "text-secondary" : ""}`} />
+                    <span>{isWon(i.id) ? "Won" : "Award"}</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => verifyDeadline(i.id)} disabled={verifyingId === i.id}
+                    className="m3-btn-text text-xs px-2 py-1.5 flex items-center gap-1 text-on-surface-variant">
+                    <RefreshCw className={`w-3.5 h-3.5 ${verifyingId === i.id ? "animate-spin text-primary" : ""}`} />
+                  </button>
+                  {i.sourceUrl && (
+                    <a href={i.sourceUrl} target="_blank" rel="noreferrer" className="m3-btn-filled text-xs px-3 py-1.5 inline-flex items-center gap-1">
+                      <span>Visit</span> <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="m3-card p-6 text-center text-sm text-on-surface-variant italic">No internships found</div>
+        )}
       </div>
 
       {filtered.length > 0 && (

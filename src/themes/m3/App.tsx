@@ -399,8 +399,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Tab bar */}
-      <div className={`mx-auto w-full px-4 pt-3 ${wideMode ? "max-w-full" : "max-w-6xl"}`}>
+      {/* Desktop Tab Bar (hidden on mobile) */}
+      <div className={`hidden sm:block mx-auto w-full px-4 pt-3 ${wideMode ? "max-w-full" : "max-w-6xl"}`}>
         <nav className="m3-nav rounded-xl overflow-hidden">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id as any)}
@@ -418,7 +418,7 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <main className={`flex-1 mx-auto w-full px-4 py-4 ${wideMode ? "max-w-full" : "max-w-6xl"}`}>
+      <main className={`flex-1 mx-auto w-full px-4 py-4 pb-24 sm:pb-4 ${wideMode ? "max-w-full" : "max-w-6xl"}`}>
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -594,6 +594,31 @@ export default function App() {
         <ResumeScannerModal onClose={() => { setScanOpen(false); setScanData(null); }}
           onData={setScanData} data={scanData} />
       )}
+
+      {/* Mobile Bottom Navigation Bar — only visible on small screens (<640px) */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-surface-dim z-50 flex items-stretch"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id as any)}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors ${
+              activeTab === t.id
+                ? "text-primary"
+                : "text-on-surface-variant"
+            }`}>
+            <div className={`relative p-1 rounded-2xl transition-all duration-200 ${
+              activeTab === t.id ? "bg-primary-container" : ""
+            }`}>
+              <t.icon className="w-5 h-5" />
+              {t.count !== undefined && t.count > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-on-primary text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {t.count > 99 ? "99+" : t.count}
+                </span>
+              )}
+            </div>
+            <span className="text-[9px] leading-none font-medium">{t.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

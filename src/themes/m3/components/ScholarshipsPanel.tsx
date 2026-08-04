@@ -129,31 +129,33 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
       {/* Toolbar */}
       <div className="m3-card p-3 mb-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex-1 min-w-[240px] relative">
+          <div className="w-full sm:flex-1 sm:min-w-[240px] relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               className="m3-field w-full pl-9" placeholder="Filter scholarships by name, org, or field..." />
           </div>
-          <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} className="m3-select">
-            <option value="all">All levels</option>
-            <option value="high_school">High school</option>
-            <option value="college">College</option>
-            <option value="graduate">Graduate</option>
-            <option value="both">Both</option>
-          </select>
-          <label className="flex items-center gap-1.5 text-xs text-on-surface cursor-pointer px-2 py-1.5 rounded-lg bg-surface-dim/40 border border-surface-dim hover:bg-surface-dim/70 transition-colors">
-            <input type="checkbox" checked={hideExpired} onChange={e => setHideExpired(e.target.checked)} className="rounded text-primary focus:ring-0" />
-            <span>Hide Expired</span>
-          </label>
-          <button onClick={resetFilters} className="m3-btn-text p-1.5 text-on-surface-variant hover:text-primary" title="Reset all filters">
-            <RotateCcw className="w-4 h-4" />
-          </button>
-          <button onClick={onOpenAiSearch} className="m3-btn-filled text-sm px-4 py-2">
-            <Sparkles className="w-4 h-4" /> AI Search
-          </button>
-          <button onClick={() => setManualOpen(!manualOpen)} className="m3-btn-outlined text-sm px-4 py-2">
-            <Plus className="w-4 h-4" /> Add
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)} className="m3-select flex-1 sm:flex-none">
+              <option value="all">All levels</option>
+              <option value="high_school">High school</option>
+              <option value="college">College</option>
+              <option value="graduate">Graduate</option>
+              <option value="both">Both</option>
+            </select>
+            <label className="flex items-center gap-1.5 text-xs text-on-surface cursor-pointer px-2 py-1.5 rounded-lg bg-surface-dim/40 border border-surface-dim hover:bg-surface-dim/70 transition-colors">
+              <input type="checkbox" checked={hideExpired} onChange={e => setHideExpired(e.target.checked)} className="rounded text-primary focus:ring-0" />
+              <span>Hide Expired</span>
+            </label>
+            <button onClick={resetFilters} className="m3-btn-text p-1.5 text-on-surface-variant hover:text-primary" title="Reset all filters">
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button onClick={onOpenAiSearch} className="m3-btn-filled text-sm px-4 py-2">
+              <Sparkles className="w-4 h-4" /> AI Search
+            </button>
+            <button onClick={() => setManualOpen(!manualOpen)} className="m3-btn-outlined text-sm px-4 py-2">
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          </div>
         </div>
       </div>
 
@@ -175,8 +177,8 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
         </div>
       )}
 
-      {/* Table */}
-      <div className="m3-card overflow-x-auto">
+      {/* Desktop Table View (hidden on small mobile screens) */}
+      <div className="hidden sm:block m3-card overflow-x-auto">
         <table className="m3-table">
           <thead>
             <tr>
@@ -251,6 +253,73 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card List (visible on mobile <640px) */}
+      <div className="block sm:hidden space-y-3">
+        {filtered.map(s => {
+          const expired = isItemExpired(s.deadline);
+          return (
+            <div key={s.id} className={`m3-card p-4 flex flex-col gap-2.5 ${expired ? "opacity-75 bg-error-container/5" : ""}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="text-xs text-on-surface-variant font-medium block">{s.organization}</span>
+                  <h4 className="font-semibold text-on-surface text-base leading-tight mt-0.5">{s.name}</h4>
+                </div>
+                <span className="font-mono font-bold text-primary text-base whitespace-nowrap bg-primary-container/40 px-2.5 py-1 rounded-lg">
+                  ${(s.amountNumeric || 0).toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {s.isNew && (
+                  <span onClick={() => dismissNew(s.id)} className="m3-badge m3-badge-new cursor-pointer">NEW</span>
+                )}
+                <span className={`font-mono ${expired ? "text-error line-through font-semibold" : "text-on-surface-variant"}`}>
+                  Deadline: {fmtDate(s.deadline)}
+                </span>
+                {expired ? (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-error/10 text-error">EXPIRED</span>
+                ) : s.lastVerifiedAt ? (
+                  <span className="text-[10px] text-success flex items-center gap-0.5">
+                    <CheckCircle2 className="w-3 h-3 inline" /> Verified
+                  </span>
+                ) : null}
+                <span className="bg-surface-dim px-2 py-0.5 rounded text-on-surface-variant">{levelLabels[s.studentLevel] || s.studentLevel}</span>
+                {s.fieldOfStudy && <span className="bg-surface-dim px-2 py-0.5 rounded text-on-surface-variant">{s.fieldOfStudy}</span>}
+              </div>
+
+              <div className="pt-2 border-t border-surface-dim flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1">
+                  <button onClick={() => toggleBookmark(s.id, "scholarship")}
+                    className={`m3-btn-text text-xs px-2.5 py-1.5 flex items-center gap-1 ${isBookmarked(s.id) ? "text-primary" : "text-on-surface-variant"}`}>
+                    <Bookmark className={`w-4 h-4 ${isBookmarked(s.id) ? "fill-primary" : ""}`} />
+                    <span>{isBookmarked(s.id) ? "Saved" : "Save"}</span>
+                  </button>
+                  <button onClick={() => toggleWon(s, "scholarship")}
+                    className={`m3-btn-text text-xs px-2.5 py-1.5 flex items-center gap-1 ${isWon(s.id) ? "text-secondary" : "text-on-surface-variant"}`}>
+                    <Award className={`w-4 h-4 ${isWon(s.id) ? "text-secondary" : ""}`} />
+                    <span>{isWon(s.id) ? "Won" : "Award"}</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => verifyDeadline(s.id)} disabled={verifyingId === s.id}
+                    className="m3-btn-text text-xs px-2 py-1.5 flex items-center gap-1 text-on-surface-variant">
+                    <RefreshCw className={`w-3.5 h-3.5 ${verifyingId === s.id ? "animate-spin text-primary" : ""}`} />
+                  </button>
+                  {s.sourceUrl && (
+                    <a href={s.sourceUrl} target="_blank" rel="noreferrer" className="m3-btn-filled text-xs px-3 py-1.5 inline-flex items-center gap-1">
+                      <span>Visit</span> <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="m3-card p-6 text-center text-sm text-on-surface-variant italic">No scholarships found</div>
+        )}
       </div>
 
       {filtered.length > 0 && (
