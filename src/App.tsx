@@ -68,12 +68,16 @@ export default function App() {
           <img src={dark ? "/logo-dark.svg" : "/logo.svg"} alt="Atlas" className="w-7 h-7 rounded" />
           <span className="font-semibold text-sm">The Admissions Atlas</span>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={handleStartWithResume} className={`${btn} text-sm px-4 py-2`}>
+        <div className="flex items-center gap-2">
+          {/* Upload Resume — hidden on mobile (available in hero below) */}
+          <button onClick={handleStartWithResume} className={`hidden sm:inline-flex items-center gap-2 bg-[#2563eb] text-white font-semibold px-4 py-2 rounded-lg text-sm hover:bg-[#1d4ed8] transition-all hover:scale-105 active:scale-95 shadow-lg shadow-[#2563eb]/20`}>
             <Upload className="w-4 h-4" /> Upload Resume
           </button>
+          {/* Go to Dashboard — text label hidden on mobile, icon + short label shown */}
           <button onClick={handleStart} className={btn}>
-            Go to Dashboard <ArrowRight className="w-4 h-4" />
+            <span className="hidden sm:inline">Go to Dashboard</span>
+            <span className="sm:hidden">Dashboard</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
           <button onClick={() => setDark(!dark)} className={`p-2 rounded-lg ${cardBg} border ${cardBorder} hover:opacity-80 transition-all`} title="Toggle theme">
             {dark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-gray-600" />}
