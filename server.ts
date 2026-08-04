@@ -15,13 +15,24 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || "";
 const adminSecretCode = process.env.ADMIN_SECRET_CODE || "ADMIN2026";
 
-const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
-  ? createClient(supabaseUrl, supabaseServiceKey)
-  : null;
+let supabaseAdmin: any = null;
+let supabaseServer: any = null;
 
-const supabaseServer = (supabaseUrl && supabaseAnonKey)
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+try {
+  if (supabaseUrl && supabaseUrl.startsWith("http") && supabaseServiceKey) {
+    supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+  }
+} catch (e: any) {
+  console.warn("[Supabase] Admin client initialization skipped:", e?.message);
+}
+
+try {
+  if (supabaseUrl && supabaseUrl.startsWith("http") && supabaseAnonKey) {
+    supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
+  }
+} catch (e: any) {
+  console.warn("[Supabase] Server client initialization skipped:", e?.message);
+}
 
 // Pre-seeded database for Scholarships
 const defaultScholarships: Scholarship[] = [
