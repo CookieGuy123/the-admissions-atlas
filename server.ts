@@ -302,21 +302,22 @@ app.set("trust proxy", 1); // Trust proxy headers so rate limiter sees real clie
 app.use(express.json({ limit: "100kb" }));
 app.use(cors());
 
-  // ── Rate limiters ──────────────────────────────────────────────────────
-  const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false, message: { error: "Too many requests. Try again later." } });
-  const aiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: "AI search rate limit reached. Max 10 requests per 15 minutes." } });
-  const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: "Auth rate limit reached. Try again later." } });
-  const sensitiveLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: "Too many attempts. Try again in an hour." } });
+  // ── Rate limiters (active in standalone server, bypassed on Vercel Edge) ──────
+  if (!process.env.VERCEL) {
+    const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false, message: { error: "Too many requests. Try again later." } });
+    const aiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: "AI search rate limit reached. Max 10 requests per 15 minutes." } });
+    const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: "Auth rate limit reached. Try again later." } });
+    const sensitiveLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: "Too many attempts. Try again in an hour." } });
 
-  // Apply per-route limiters (order matters: more specific first)
-  app.use("/api/auth/upgrade-admin", sensitiveLimiter);
-  app.use("/api/admin/promote-by-email", sensitiveLimiter);
-  app.use("/api/scholarships/update", aiLimiter);
-  app.use("/api/internships/update", aiLimiter);
-  app.use("/api/analyze-resume", aiLimiter);
-  app.use("/api/colleges/recommend", aiLimiter);
-  app.use("/api/auth/", authLimiter);
-  app.use("/api/", generalLimiter);
+    app.use("/api/auth/upgrade-admin", sensitiveLimiter);
+    app.use("/api/admin/promote-by-email", sensitiveLimiter);
+    app.use("/api/scholarships/update", aiLimiter);
+    app.use("/api/internships/update", aiLimiter);
+    app.use("/api/analyze-resume", aiLimiter);
+    app.use("/api/colleges/recommend", aiLimiter);
+    app.use("/api/auth/", authLimiter);
+    app.use("/api/", generalLimiter);
+  }
 
   // ── Endpoints ──────────────────────────────────────────────────────────
 
