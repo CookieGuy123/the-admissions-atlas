@@ -298,12 +298,9 @@ async function requireAdmin(userId: string): Promise<string | null> {
 
 export const app = express();
 
-async function startServer() {
-  const PORT = 3000;
-
-  app.set("trust proxy", 1); // Trust proxy headers so rate limiter sees real client IPs behind reverse proxies / Codespaces
-  app.use(express.json({ limit: "100kb" }));
-  app.use(cors());
+app.set("trust proxy", 1); // Trust proxy headers so rate limiter sees real client IPs behind reverse proxies / Codespaces
+app.use(express.json({ limit: "100kb" }));
+app.use(cors());
 
   // ── Rate limiters ──────────────────────────────────────────────────────
   const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false, message: { error: "Too many requests. Try again later." } });
@@ -1044,16 +1041,15 @@ Return ONLY the JSON object — no other text.`,
     }
   });
 
-  // Serve static assets in production if running standalone (not Vercel serverless)
-  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
-    if (!process.env.VERCEL) {
-      const distPath = path.join(process.cwd(), "dist");
-      app.use(express.static(distPath));
+async function startServer() {
+  const PORT = 3000;
+  if (process.env.NODE_ENV === "production") {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
 
-      app.get("*", (req, res) => {
-        res.sendFile(path.join(distPath, "index.html"));
-      });
-    }
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
   } else {
     try {
       const { createServer: createViteServer } = await import("vite");
@@ -1067,15 +1063,14 @@ Return ONLY the JSON object — no other text.`,
     }
   }
 
-  if (!process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server launched on port ${PORT}`);
-      console.log(`Vite development server active...`);
-    });
-  }
-
-  return app;
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server launched on port ${PORT}`);
+    console.log(`Vite development server active...`);
+  });
 }
 
-const appPromise = startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
 export default app;
