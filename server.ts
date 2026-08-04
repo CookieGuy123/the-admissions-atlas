@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { collegesData } from "./src/data/colleges";
+import type { Scholarship, Internship } from "./src/types";
 
 dotenv.config();
 
@@ -24,7 +25,7 @@ const supabaseServer = (supabaseUrl && supabaseAnonKey)
   : null;
 
 // Pre-seeded database for Scholarships
-const defaultScholarships = [
+const defaultScholarships: Scholarship[] = [
   {
     id: "sch-gates",
     name: "The Gates Scholarship",
@@ -154,7 +155,7 @@ const defaultScholarships = [
 ];
 
 // Pre-seeded database for Internships
-const defaultInternships = [
+const defaultInternships: Internship[] = [
   {
     id: "int-google-swe",
     title: "Software Engineering Intern",
@@ -238,8 +239,8 @@ const defaultInternships = [
 ];
 
 // In-memory array that expands during the application lifecycle
-let dynamicScholarships = [...defaultScholarships];
-let dynamicInternships = [...defaultInternships];
+let dynamicScholarships: Scholarship[] = [...defaultScholarships];
+let dynamicInternships: Internship[] = [...defaultInternships];
 
 /** Check if a deadline string (YYYY-MM-DD) is strictly before today */
 function isExpired(deadlineStr: string): boolean {
