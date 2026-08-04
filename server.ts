@@ -498,13 +498,13 @@ app.use(cors());
   });
 
   // API Route: Get Scholarships list (auto-purges expired entries)
-  app.get("/api/scholarships", (req, res) => {
+  app.get(["/api/scholarships", "/scholarships"], (req, res) => {
     purgeExpiredOpportunities();
     res.json(dynamicScholarships);
   });
 
   // API Route: Use Gemini with Google Search tool to search and verify scholarships
-  app.post("/api/scholarships/update", async (req, res) => {
+  app.post(["/api/scholarships/update", "/scholarships/update"], async (req, res) => {
     purgeExpiredOpportunities();
     const rawQuery = sanitizeInput(req.body?.searchQuery, MAX_QUERY_LENGTH);
     const query = rawQuery || "reputable high school seniors and college student scholarships 2026 2027";
@@ -644,7 +644,7 @@ Return only the json block with no other conversational markdown text. REMEMBER:
 
 
   // API Route: Get Internships list (auto-purges expired entries)
-  app.get("/api/internships", (req, res) => {
+  app.get(["/api/internships", "/internships"], (req, res) => {
     purgeExpiredOpportunities();
     res.json(dynamicInternships);
   });
@@ -1041,6 +1041,12 @@ Return ONLY the JSON object — no other text.`,
       res.json(keywordFallback());
     }
   });
+
+// Global error handling middleware for Express/Serverless
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error("[Server Error]", err);
+  res.status(500).json({ error: err?.message || "Internal Server Error" });
+});
 
 async function startServer() {
   const PORT = 3000;
