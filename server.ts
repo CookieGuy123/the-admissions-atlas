@@ -297,8 +297,9 @@ async function requireAdmin(userId: string): Promise<string | null> {
   }
 }
 
+export const app = express();
+
 async function startServer() {
-  const app = express();
   const PORT = 3000;
 
   app.set("trust proxy", 1); // Trust proxy headers so rate limiter sees real client IPs behind reverse proxies / Codespaces
@@ -1060,10 +1061,15 @@ Return ONLY the JSON object — no other text.`,
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server launched on port ${PORT}`);
-    console.log(`Vite development server active...`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server launched on port ${PORT}`);
+      console.log(`Vite development server active...`);
+    });
+  }
+
+  return app;
 }
 
-startServer();
+const appPromise = startServer();
+export default app;
