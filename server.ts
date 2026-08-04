@@ -783,7 +783,7 @@ Return only the json code block with no conversational wrapper. REMEMBER: today 
 
 
   // AI Resume Analyzer
-  app.post("/api/analyze-resume", async (req, res) => {
+  app.post(["/api/analyze-resume", "/analyze-resume"], async (req, res) => {
     const resumeText = sanitizeInput(req.body?.resumeText, MAX_RESUME_LENGTH);
     if (!resumeText) return res.status(400).json({ error: "No resume text provided." });
     const safeResume = containUserText(resumeText);
@@ -953,7 +953,7 @@ Return ONLY a raw JSON object:
     location: c.location, tuition: c.tuitionSticker, rate: c.acceptanceRate
   }));
 
-  app.post("/api/colleges/recommend", async (req, res) => {
+  app.post(["/api/colleges/recommend", "/colleges/recommend"], async (req, res) => {
     const interests = sanitizeInput(req.body?.interests, MAX_QUERY_LENGTH);
     if (!interests) return res.json({ matches: [], suggestions: [] });
 

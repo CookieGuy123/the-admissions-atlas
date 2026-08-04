@@ -1,10 +1,3 @@
 import app from "../server";
 
-export default function handler(req: any, res: any) {
-  try {
-    return app(req, res);
-  } catch (err: any) {
-    console.error("[Vercel Serverless Error]", err);
-    res.status(500).json({ error: err?.message || "Internal Serverless Error" });
-  }
-}
+export default app;
