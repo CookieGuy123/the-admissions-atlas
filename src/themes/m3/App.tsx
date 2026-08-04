@@ -10,6 +10,7 @@ import AuthModal from "./components/AuthModal";
 import ResumeScannerModal from "./components/ResumeScannerModal";
 import AdminPanel from "../../components/AdminPanel";
 import ToastContainer from "../../components/ToastContainer";
+import { defaultScholarships, defaultInternships } from "../../data/defaultData";
 
 function formatTimestamp(ts: string): string {
   const d = new Date(ts);
@@ -29,8 +30,8 @@ import { Search, Bookmark, Award, Bell, School, Briefcase, Calendar, Calculator,
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"overview" | "scholarships" | "internships" | "deadlines" | "calculator" | "profile" | "admin">("overview");
-  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
-  const [internships, setInternships] = useState<Internship[]>([]);
+  const [scholarships, setScholarships] = useState<Scholarship[]>(defaultScholarships);
+  const [internships, setInternships] = useState<Internship[]>(defaultInternships);
   const [bookmarked, setBookmarked] = useState<BookmarkedOpportunity[]>([]);
   const [wonScholarships, setWonScholarships] = useState<Scholarship[]>([]);
   const [wonInternships, setWonInternships] = useState<Internship[]>([]);
@@ -148,12 +149,19 @@ export default function App() {
     setIsLoading(true);
     try {
       const [schRes, intRes] = await Promise.all([fetch("/api/scholarships"), fetch("/api/internships")]);
-      const schData = await schRes.json();
-      const intData = await intRes.json();
-      setScholarships(schData);
-      setInternships(intData);
-    } catch (e) { console.error("Failed to load data", e); }
-    finally { setIsLoading(false); }
+      if (schRes.ok) {
+        const schData = await schRes.json();
+        if (Array.isArray(schData) && schData.length > 0) setScholarships(schData);
+      }
+      if (intRes.ok) {
+        const intData = await intRes.json();
+        if (Array.isArray(intData) && intData.length > 0) setInternships(intData);
+      }
+    } catch (e) {
+      console.warn("API load failed, using default client listings", e);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const saveLocalData = () => {
