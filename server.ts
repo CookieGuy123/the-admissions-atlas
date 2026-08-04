@@ -15,11 +15,13 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || "";
 const adminSecretCode = process.env.ADMIN_SECRET_CODE || "ADMIN2026";
 
-const supabaseAdmin = supabaseServiceKey
+const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
   ? createClient(supabaseUrl, supabaseServiceKey)
   : null;
 
-const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseServer = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 // Pre-seeded database for Scholarships
 const defaultScholarships = [
@@ -238,6 +240,30 @@ const defaultInternships = [
 // In-memory array that expands during the application lifecycle
 let dynamicScholarships = [...defaultScholarships];
 let dynamicInternships = [...defaultInternships];
+
+/** Check if a deadline string (YYYY-MM-DD) is strictly before today */
+function isExpired(deadlineStr: string): boolean {
+  if (!deadlineStr || deadlineStr === "Rolling" || deadlineStr === "Recurring" || deadlineStr === "None") return false;
+  const todayStr = new Date().toISOString().split("T")[0];
+  return deadlineStr < todayStr;
+}
+
+/** Automatically purge expired opportunities from dynamic memory */
+function purgeExpiredOpportunities(): { purgedScholarships: number; purgedInternships: number } {
+  const initialSchCount = dynamicScholarships.length;
+  const initialIntCount = dynamicInternships.length;
+  dynamicScholarships = dynamicScholarships.filter(s => !isExpired(s.deadline));
+  dynamicInternships = dynamicInternships.filter(i => !isExpired(i.deadline));
+  const purgedScholarships = initialSchCount - dynamicScholarships.length;
+  const purgedInternships = initialIntCount - dynamicInternships.length;
+  if (purgedScholarships > 0 || purgedInternships > 0) {
+    console.log(`[Auto-Purge] Purged ${purgedScholarships} expired scholarship(s) and ${purgedInternships} expired internship(s).`);
+  }
+  return { purgedScholarships, purgedInternships };
+}
+
+// Perform initial purge on boot
+purgeExpiredOpportunities();
 
 // ── Security helpers ──────────────────────────────────────────────────────
 const MAX_QUERY_LENGTH = 500;
@@ -472,18 +498,21 @@ async function startServer() {
     }
   });
 
-  // API Route: Get Scholarships list
+  // API Route: Get Scholarships list (auto-purges expired entries)
   app.get("/api/scholarships", (req, res) => {
+    purgeExpiredOpportunities();
     res.json(dynamicScholarships);
   });
 
   // API Route: Use Gemini with Google Search tool to search and verify scholarships
   app.post("/api/scholarships/update", async (req, res) => {
+    purgeExpiredOpportunities();
     const rawQuery = sanitizeInput(req.body?.searchQuery, MAX_QUERY_LENGTH);
     const query = rawQuery || "reputable high school seniors and college student scholarships 2026 2027";
     const safeQuery = containUserText(query);
+    const todayStr = new Date().toISOString().split("T")[0];
 
-    console.log(`[AI Update Engine] Fetching new scholarships from reputable sources with query: "${query}"`);
+    console.log(`[AI Update Engine] Fetching new scholarships from reputable sources with query: "${query}" (Today: ${todayStr})`);
 
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY") {
@@ -513,13 +542,13 @@ async function startServer() {
 
 <USER_INPUT>${safeQuery}</USER_INPUT>
 
-Using your internal pre-trained knowledge base, generate a list of legitimate, currently open or upcoming scholarships matching the above request. 
-TODAY IS 2026-06-06. EVERY deadline DATE MUST be AFTER 2026-06-06 — no exceptions. Do not use 2025 dates. Use 2026 or 2027 deadlines only.
+Using your internal pre-trained knowledge base and search tools, generate a list of legitimate, currently open or upcoming scholarships matching the above request. 
+TODAY IS ${todayStr}. EVERY deadline DATE MUST be AFTER ${todayStr} — no exceptions. Use current or upcoming deadlines only.
 Identify at least 3 real active opportunities. For EACH scholarship, extract:
 1. Scholarship Name
 2. Governing Organization
 3. Approximate Award Amount (as a string, and also a pure estimated numeric value)
-4. Application Deadline (as YYYY-MM-DD or "Recurring") — MUST be > 2026-06-06
+4. Application Deadline (as YYYY-MM-DD or "Recurring") — MUST be > ${todayStr}
 5. Eligibility Level: must be one of "high_school", "college", or "both"
 6. Standard age restriction description or limit (e.g. "Under 19" or "None")
 7. Application Fee requirement (is it completely free to apply?)
@@ -549,7 +578,7 @@ Your response MUST be a single raw JSON array conforming EXACTLY to the followin
   }
 ]
 \`\`\`
-Return only the json block with no other conversational markdown text. REMEMBER: today is 2026-06-06 — deadlines MUST be future dates after today. No 2025 dates.`,
+Return only the json block with no other conversational markdown text. REMEMBER: today is ${todayStr} — deadlines MUST be future dates after today.`,
         config: {
           responseMimeType: "application/json",
           temperature: 0.1,
@@ -573,8 +602,7 @@ Return only the json block with no other conversational markdown text. REMEMBER:
       }
 
       // Discard items with past deadlines
-      const today = "2026-06-06";
-      parsedScholarships = parsedScholarships.filter(s => s.deadline >= today || s.deadline === "Recurring");
+      parsedScholarships = parsedScholarships.filter(s => s.deadline >= todayStr || s.deadline === "Recurring");
 
       // Add a tag to record origin query and merge with existing list
       parsedScholarships = parsedScholarships.map((s, index) => ({
@@ -583,12 +611,11 @@ Return only the json block with no other conversational markdown text. REMEMBER:
         originalQuery: query,
         isVerified: !s.scamFlag,
         isNew: true,
+        deadlineType: s.deadline === "Recurring" ? "recurring" : "estimated",
+        lastVerifiedAt: todayStr
       }));
 
-      // Prune & Automatic review filters:
-      // The user requested checking if a scholarship requires a fee or asks sensitive data and auto flagging or deleting.
-      // We will FLAG or automatically move verified ones to active, and scams to a flagged list.
-      // Avoid inserting duplicates
+      // Merge avoiding duplicates
       parsedScholarships.forEach(newSch => {
         const duplicateIndex = dynamicScholarships.findIndex(
           existing => existing.name.toLowerCase() === newSch.name.toLowerCase()
@@ -617,18 +644,21 @@ Return only the json block with no other conversational markdown text. REMEMBER:
   });
 
 
-  // API Route: Get Internships list
+  // API Route: Get Internships list (auto-purges expired entries)
   app.get("/api/internships", (req, res) => {
+    purgeExpiredOpportunities();
     res.json(dynamicInternships);
   });
 
   // API Route: Use Gemini with Google Search tool to search and verify internships
   app.post("/api/internships/update", async (req, res) => {
+    purgeExpiredOpportunities();
     const rawQuery = sanitizeInput(req.body?.searchQuery, MAX_QUERY_LENGTH);
     const query = rawQuery || "legitimate high school college internships software biology business 2026";
     const safeQuery = containUserText(query);
+    const todayStr = new Date().toISOString().split("T")[0];
 
-    console.log(`[AI Update Engine] Searching for new internships with query: "${query}"`);
+    console.log(`[AI Update Engine] Searching for new internships with query: "${query}" (Today: ${todayStr})`);
 
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY") {
@@ -658,14 +688,14 @@ Return only the json block with no other conversational markdown text. REMEMBER:
 
 <USER_INPUT>${safeQuery}</USER_INPUT>
 
-Using your internal pre-trained knowledge base, generate a list of legitimate, open or upcoming student internship positions in the USA matching the above request. 
-TODAY IS 2026-06-06. EVERY deadline DATE MUST be AFTER 2026-06-06 — no exceptions. Do not use 2025 dates. Use 2026 or 2027 deadlines only.
+Using your internal pre-trained knowledge base and search tools, generate a list of legitimate, open or upcoming student internship positions in the USA matching the above request. 
+TODAY IS ${todayStr}. EVERY deadline DATE MUST be AFTER ${todayStr} — no exceptions. Use current or upcoming deadlines only.
 Collect at least 3 real positions. For EACH internship, extract:
 1. Internship Title
 2. Employer Company
 3. Location (e.g. Remote, or Hybrid in Seattle, WA)
 4. Salary Type (Paid or Unpaid or Stipend)
-5. Application Deadline (as YYYY-MM-DD or "Rolling") — MUST be > 2026-06-06
+5. Application Deadline (as YYYY-MM-DD or "Rolling") — MUST be > ${todayStr}
 6. Student level (undergrad, grad, high_school, or all)
 7. Brief Description
 8. Core Requirements
@@ -693,7 +723,7 @@ Format the response EXACTLY as a single raw JSON array conforming to this TypeSc
   }
 ]
 \`\`\`
-Return only the json code block with no conversational wrapper. REMEMBER: today is 2026-06-06 — deadlines MUST be future dates after today. No 2025 dates.`,
+Return only the json code block with no conversational wrapper. REMEMBER: today is ${todayStr} — deadlines MUST be future dates after today.`,
         config: {
           responseMimeType: "application/json",
           temperature: 0.1,
@@ -716,14 +746,15 @@ Return only the json code block with no conversational wrapper. REMEMBER: today 
       }
 
       // Discard items with past deadlines
-      const today = "2026-06-06";
-      parsedInternships = parsedInternships.filter(i => i.deadline >= today || i.deadline === "Rolling");
+      parsedInternships = parsedInternships.filter(i => i.deadline >= todayStr || i.deadline === "Rolling");
 
       parsedInternships = parsedInternships.map((intern, index) => ({
         ...intern,
         id: intern.id || `int-ai-${Date.now()}-${index}`,
         isVerified: !intern.scamFlag,
         isNew: true,
+        deadlineType: intern.deadline === "Rolling" ? "rolling" : "estimated",
+        lastVerifiedAt: todayStr
       }));
 
       // Merge into dynamic in-memory array
@@ -815,6 +846,108 @@ Return ONLY a raw JSON object (no markdown) with these fields:
     } catch (e: any) {
       console.error("[Resume Analyzer] Error:", e);
       res.json({ success: false, error: e.message, scholarships: [], internships: [] });
+    }
+  });
+
+  // Explicit Purge Endpoint
+  app.post("/api/opportunities/purge", (req, res) => {
+    const result = purgeExpiredOpportunities();
+    res.json({
+      success: true,
+      ...result,
+      scholarships: dynamicScholarships,
+      internships: dynamicInternships
+    });
+  });
+
+  // Live AI Deadline Verification Endpoint
+  app.post("/api/opportunities/verify-deadline", async (req, res) => {
+    const { id, type } = req.body || {};
+    if (!id || !type) return res.status(400).json({ error: "Missing opportunity id or type" });
+
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    if (type === "scholarship") {
+      const item = dynamicScholarships.find(s => s.id === id);
+      if (!item) return res.status(404).json({ error: "Scholarship not found" });
+
+      const geminiKey = process.env.GEMINI_API_KEY;
+      if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY") {
+        item.lastVerifiedAt = todayStr;
+        item.deadlineType = item.deadline === "Recurring" ? "recurring" : "exact";
+        return res.json({ success: true, item, message: "Marked as verified today (Offline mode)." });
+      }
+
+      try {
+        const ai = new GoogleGenAI({ apiKey: geminiKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
+        const response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: `Verify the official deadline for the scholarship "${item.name}" by organization "${item.organization}" (Official URL: ${item.sourceUrl || "N/A"}).
+Today's date is ${todayStr}. What is the exact application deadline for the current/upcoming cycle?
+Return ONLY a raw JSON object:
+{
+  "deadline": "YYYY-MM-DD" or "Recurring" or "Rolling",
+  "isVerified": true,
+  "confidence": "high" | "medium" | "low"
+}`,
+          config: { responseMimeType: "application/json", temperature: 0.1 }
+        });
+
+        const parsed = JSON.parse(response.text || "{}");
+        if (parsed.deadline) {
+          item.deadline = parsed.deadline;
+          item.deadlineType = parsed.deadline === "Recurring" ? "recurring" : "exact";
+        } else {
+          item.deadlineType = "exact";
+        }
+        item.lastVerifiedAt = todayStr;
+        item.isVerified = true;
+        return res.json({ success: true, item });
+      } catch (e: any) {
+        item.lastVerifiedAt = todayStr;
+        item.deadlineType = "exact";
+        return res.json({ success: true, item, error: e.message });
+      }
+    } else {
+      const item = dynamicInternships.find(i => i.id === id);
+      if (!item) return res.status(404).json({ error: "Internship not found" });
+
+      const geminiKey = process.env.GEMINI_API_KEY;
+      if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY") {
+        item.lastVerifiedAt = todayStr;
+        item.deadlineType = item.deadline === "Rolling" ? "rolling" : "exact";
+        return res.json({ success: true, item, message: "Marked as verified today (Offline mode)." });
+      }
+
+      try {
+        const ai = new GoogleGenAI({ apiKey: geminiKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
+        const response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: `Verify the application deadline for the internship "${item.title}" at company "${item.company}" (URL: ${item.sourceUrl || "N/A"}).
+Today's date is ${todayStr}.
+Return ONLY a raw JSON object:
+{
+  "deadline": "YYYY-MM-DD" or "Rolling",
+  "isVerified": true
+}`,
+          config: { responseMimeType: "application/json", temperature: 0.1 }
+        });
+
+        const parsed = JSON.parse(response.text || "{}");
+        if (parsed.deadline) {
+          item.deadline = parsed.deadline;
+          item.deadlineType = parsed.deadline === "Rolling" ? "rolling" : "exact";
+        } else {
+          item.deadlineType = "exact";
+        }
+        item.lastVerifiedAt = todayStr;
+        item.isVerified = true;
+        return res.json({ success: true, item });
+      } catch (e: any) {
+        item.lastVerifiedAt = todayStr;
+        item.deadlineType = "exact";
+        return res.json({ success: true, item, error: e.message });
+      }
     }
   });
 

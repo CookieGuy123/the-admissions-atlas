@@ -16,6 +16,8 @@ export interface Scholarship {
   fieldOfStudy: string;
   originalQuery?: string;
   isNew?: boolean;
+  deadlineType?: "exact" | "estimated" | "rolling" | "recurring";
+  lastVerifiedAt?: string;
 }
 
 export interface Internship {
@@ -34,6 +36,8 @@ export interface Internship {
   sourceUrl: string;
   fieldOfStudy: string;
   isNew?: boolean;
+  deadlineType?: "exact" | "estimated" | "rolling" | "recurring";
+  lastVerifiedAt?: string;
 }
 
 export interface College {

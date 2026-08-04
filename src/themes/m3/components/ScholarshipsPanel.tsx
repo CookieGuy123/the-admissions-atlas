@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Bookmark, Award, ExternalLink, Plus, Sparkles, X, ArrowUpDown, RotateCcw } from "lucide-react";
+import { Search, Bookmark, Award, ExternalLink, Plus, Sparkles, X, ArrowUpDown, RotateCcw, AlertCircle, CheckCircle2, RefreshCw, Filter } from "lucide-react";
 import type { Scholarship, Internship, UserProfile } from "../../../types";
 
 const levelLabels: Record<string, string> = { high_school: "High School", college: "College", both: "Both", graduate: "Graduate" };
@@ -25,11 +25,19 @@ function fmtDate(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
 }
 
+function isItemExpired(deadlineStr: string): boolean {
+  if (!deadlineStr || deadlineStr === "Rolling" || deadlineStr === "Recurring" || deadlineStr === "None") return false;
+  const today = new Date().toISOString().split("T")[0];
+  return deadlineStr < today;
+}
+
 export default function ScholarshipsPanel({ scholarships, setScholarships, isBookmarked, toggleBookmark, isWon, toggleWon, dismissNew, saveData, profile, onOpenAiSearch }: Props) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"deadline" | "amount" | "name">("deadline");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [levelFilter, setLevelFilter] = useState("all");
+  const [hideExpired, setHideExpired] = useState(true);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [manual, setManual] = useState({ name: "", organization: "", amountNumeric: "", deadline: "", studentLevel: "high_school" });
 
@@ -45,8 +53,28 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
   const resetFilters = () => {
     setSearch("");
     setLevelFilter("all");
+    setHideExpired(true);
     setSortBy("deadline");
     setSortDir("asc");
+  };
+
+  const verifyDeadline = async (id: string) => {
+    setVerifyingId(id);
+    try {
+      const res = await fetch("/api/opportunities/verify-deadline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, type: "scholarship" })
+      });
+      const data = await res.json();
+      if (data.success && data.item) {
+        setScholarships(prev => prev.map(s => s.id === id ? { ...s, ...data.item } : s));
+      }
+    } catch (e) {
+      console.error("Verification failed", e);
+    } finally {
+      setVerifyingId(null);
+    }
   };
 
   const sortArrow = (field: "deadline" | "amount" | "name") => {
@@ -56,6 +84,7 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
 
   const filtered = scholarships
     .filter(s => {
+      if (hideExpired && isItemExpired(s.deadline)) return false;
       if (levelFilter !== "all" && s.studentLevel !== levelFilter && s.studentLevel !== "both") return false;
       if (!search) return true;
       const q = search.toLowerCase();
@@ -79,6 +108,7 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
       sourceUrl: "", isNew: false,
       isFree: true, scamFlag: false, scamReason: "", ageFilter: "All eligible",
       requirements: [], isVerified: true, fieldOfStudy: "",
+      lastVerifiedAt: new Date().toISOString().split("T")[0]
     };
     setScholarships(prev => [s, ...prev]);
     setManual({ name: "", organization: "", amountNumeric: "", deadline: "", studentLevel: "high_school" });
@@ -88,6 +118,14 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
 
   return (
     <div>
+      {/* Deadline Disclaimer Banner */}
+      <div className="m3-card p-3 mb-4 bg-primary-container/20 border border-primary/20 flex items-start gap-3">
+        <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-xs text-on-surface-variant leading-relaxed">
+          <span className="font-semibold text-on-surface">Deadline Notice:</span> Due dates are gathered from official providers and AI search. Deadlines can change without notice — verify dates on the official website via the <span className="font-semibold">Visit</span> link.
+        </div>
+      </div>
+
       {/* Toolbar */}
       <div className="m3-card p-3 mb-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -103,7 +141,10 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
             <option value="graduate">Graduate</option>
             <option value="both">Both</option>
           </select>
-          <span className="text-xs text-on-surface-variant hidden sm:inline">Click headers to sort</span>
+          <label className="flex items-center gap-1.5 text-xs text-on-surface cursor-pointer px-2 py-1.5 rounded-lg bg-surface-dim/40 border border-surface-dim hover:bg-surface-dim/70 transition-colors">
+            <input type="checkbox" checked={hideExpired} onChange={e => setHideExpired(e.target.checked)} className="rounded text-primary focus:ring-0" />
+            <span>Hide Expired</span>
+          </label>
           <button onClick={resetFilters} className="m3-btn-text p-1.5 text-on-surface-variant hover:text-primary" title="Reset all filters">
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -149,44 +190,62 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
             </tr>
           </thead>
           <tbody>
-            {filtered.map(s => (
-              <tr key={s.id}>
-                <td className="text-sm text-on-surface-variant">{s.organization}</td>
-                <td className="font-medium">
-                  <div className="flex items-center gap-2">
-                    {s.name}
-                    {s.isNew && <span onClick={() => dismissNew(s.id)} className="m3-badge m3-badge-new cursor-pointer" title="Dismiss">NEW</span>}
-                  </div>
-                </td>
-                <td className="text-right font-mono tabular-nums font-semibold">${(s.amountNumeric || 0).toLocaleString()}</td>
-                <td className="font-mono tabular-nums text-sm">
-                  {fmtDate(s.deadline)}
-                </td>
-                <td className="text-sm text-on-surface-variant">{levelLabels[s.studentLevel] || s.studentLevel}</td>
-                <td className="text-sm text-on-surface-variant">{s.fieldOfStudy || "—"}</td>
-                <td>
-                  <div className="flex items-center gap-0.5">
-                    <button onClick={() => toggleBookmark(s.id, "scholarship")} title={isBookmarked(s.id) ? "Remove bookmark" : "Bookmark"}
-                      className={`m3-btn-text p-1.5 flex items-center gap-1 ${isBookmarked(s.id) ? "text-primary" : "text-on-surface-variant"}`}>
-                      <Bookmark className={`w-4 h-4 ${isBookmarked(s.id) ? "fill-primary" : ""}`} />
-                      <span className="text-[10px] leading-none hidden md:inline">{isBookmarked(s.id) ? "Saved" : "Save"}</span>
-                    </button>
-                    <button onClick={() => toggleWon(s, "scholarship")} title={isWon(s.id) ? "Remove award" : "Mark as won"}
-                      className={`m3-btn-text p-1.5 flex items-center gap-1 ${isWon(s.id) ? "text-secondary" : "text-on-surface-variant"}`}>
-                      <Award className={`w-4 h-4 ${isWon(s.id) ? "text-secondary" : ""}`} />
-                      <span className="text-[10px] leading-none hidden md:inline">{isWon(s.id) ? "Won" : "Award"}</span>
-                    </button>
-                    {s.sourceUrl && (
-                      <a href={s.sourceUrl} target="_blank" rel="noreferrer" title="Open website"
-                        className="m3-btn-text p-1.5 flex items-center gap-1 text-on-surface-variant">
-                        <ExternalLink className="w-4 h-4" />
-                        <span className="text-[10px] leading-none hidden md:inline">Visit</span>
-                      </a>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map(s => {
+              const expired = isItemExpired(s.deadline);
+              return (
+                <tr key={s.id} className={expired ? "opacity-75 bg-error-container/5" : ""}>
+                  <td className="text-sm text-on-surface-variant">{s.organization}</td>
+                  <td className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {s.name}
+                      {s.isNew && <span onClick={() => dismissNew(s.id)} className="m3-badge m3-badge-new cursor-pointer" title="Dismiss">NEW</span>}
+                    </div>
+                  </td>
+                  <td className="text-right font-mono tabular-nums font-semibold">${(s.amountNumeric || 0).toLocaleString()}</td>
+                  <td className="font-mono tabular-nums text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <span className={expired ? "text-error line-through font-semibold" : ""}>{fmtDate(s.deadline)}</span>
+                      {expired ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-error/10 text-error">EXPIRED</span>
+                      ) : s.lastVerifiedAt ? (
+                        <span className="text-[10px] text-success flex items-center gap-0.5" title={`Verified: ${s.lastVerifiedAt}`}>
+                          <CheckCircle2 className="w-3 h-3 inline" /> Verified
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="text-sm text-on-surface-variant">{levelLabels[s.studentLevel] || s.studentLevel}</td>
+                  <td className="text-sm text-on-surface-variant">{s.fieldOfStudy || "—"}</td>
+                  <td>
+                    <div className="flex items-center gap-0.5 justify-end">
+                      <button onClick={() => verifyDeadline(s.id)} disabled={verifyingId === s.id}
+                        title="Re-verify deadline with AI"
+                        className="m3-btn-text p-1.5 flex items-center gap-1 text-on-surface-variant hover:text-primary">
+                        <RefreshCw className={`w-3.5 h-3.5 ${verifyingId === s.id ? "animate-spin text-primary" : ""}`} />
+                        <span className="text-[10px] leading-none hidden md:inline">Verify</span>
+                      </button>
+                      <button onClick={() => toggleBookmark(s.id, "scholarship")} title={isBookmarked(s.id) ? "Remove bookmark" : "Bookmark"}
+                        className={`m3-btn-text p-1.5 flex items-center gap-1 ${isBookmarked(s.id) ? "text-primary" : "text-on-surface-variant"}`}>
+                        <Bookmark className={`w-4 h-4 ${isBookmarked(s.id) ? "fill-primary" : ""}`} />
+                        <span className="text-[10px] leading-none hidden md:inline">{isBookmarked(s.id) ? "Saved" : "Save"}</span>
+                      </button>
+                      <button onClick={() => toggleWon(s, "scholarship")} title={isWon(s.id) ? "Remove award" : "Mark as won"}
+                        className={`m3-btn-text p-1.5 flex items-center gap-1 ${isWon(s.id) ? "text-secondary" : "text-on-surface-variant"}`}>
+                        <Award className={`w-4 h-4 ${isWon(s.id) ? "text-secondary" : ""}`} />
+                        <span className="text-[10px] leading-none hidden md:inline">{isWon(s.id) ? "Won" : "Award"}</span>
+                      </button>
+                      {s.sourceUrl && (
+                        <a href={s.sourceUrl} target="_blank" rel="noreferrer" title="Open website"
+                          className="m3-btn-text p-1.5 flex items-center gap-1 text-on-surface-variant">
+                          <ExternalLink className="w-4 h-4" />
+                          <span className="text-[10px] leading-none hidden md:inline">Visit</span>
+                        </a>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && (
               <tr><td colSpan={7} className="text-center text-sm text-on-surface-variant py-8 italic">No scholarships found</td></tr>
             )}
