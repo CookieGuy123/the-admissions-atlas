@@ -1,19 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="100%" height="100%" fill="#0B0F17" />
-
-  <polygon points="256,30 460,148 460,364 256,482 52,364 52,148" 
-           fill="none" 
-           stroke="#00E5FF" 
-           stroke-width="12" 
-           stroke-linejoin="round" />
-           
-  <line x1="256" y1="30" x2="256" y2="482" stroke="#1E293B" stroke-width="4" stroke-dasharray="8,8" />
-  <line x1="52" y1="148" x2="460" y2="364" stroke="#1E293B" stroke-width="4" stroke-dasharray="8,8" />
-  <line x1="52" y1="364" x2="460" y2="148" stroke="#1E293B" stroke-width="4" stroke-dasharray="8,8" />
-
-  <polygon points="256,100 130,400 185,400 256,230" fill="#00A3E0" />
-  
-  <polygon points="256,100 382,400 327,400 256,230" fill="#0082B4" />
-  
-  <polygon points="256,190 310,290 256,265 202,290" fill="#00E5FF" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <g fill="none" stroke="#000000" stroke-width="28" stroke-linejoin="round" stroke-linecap="round">
+    
+    <polygon points="256,40 450,152 450,360 256,472 62,360 62,152" />
+    
+    <polygon points="256,120 150,390 205,390 256,235" fill="#000000" stroke="#000000" stroke-width="8" />
+    
+    <polygon points="256,120 362,390 307,390 256,235" fill="#000000" stroke="#000000" stroke-width="8" />
+    
+    <polygon points="256,210 300,295 256,275 212,295" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="6" />
+    
+  </g>
 </svg>
