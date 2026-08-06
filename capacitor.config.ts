@@ -5,7 +5,6 @@ const config: CapacitorConfig = {
   appName: 'The Admissions Atlas',
   webDir: 'dist',
   server: {
-    url: 'https://the-admissions-atlas.vercel.app',
     androidScheme: 'https',
   },
 };
