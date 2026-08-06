@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { apiFetch } from "../../lib/api";
-import { StatusBar, Style } from "@capacitor/status-bar";
 import { SystemBars } from "../../lib/systemBars";
 import { supabase } from "../../supabaseClient";
 import type { Scholarship, Internship, BookmarkedOpportunity, NotificationItem, UserPreferences, UserProfile } from "../../types";
@@ -74,11 +73,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("aid_dark", String(darkMode));
-    // Style.Light = light/white icons → use on DARK backgrounds
-    // Style.Dark  = dark/black icons → use on LIGHT backgrounds
-    StatusBar.setStyle({ style: darkMode ? Style.Light : Style.Dark }).catch(() => {});
-    StatusBar.setBackgroundColor({ color: darkMode ? "#141218" : "#ffffff" }).catch(() => {});
-    // Custom plugin: sync navigation bar (gesture bar) color
+    // Custom plugin: sync status bar and navigation bar (gesture bar) color and icons dynamically
     SystemBars.setDarkMode({ dark: darkMode }).catch(() => {});
   }, [darkMode]);
   useEffect(() => { localStorage.setItem("aid_wide", String(wideMode)); }, [wideMode]);
