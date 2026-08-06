@@ -226,11 +226,23 @@ function sanitizeInput(input: unknown, maxLength: number): string {
   if (typeof input !== "string") return "";
   return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").slice(0, maxLength).trim();
 }
-
 function containUserText(text: string): string {
   return text.replace(/\{/g, "\\{").replace(/\}/g, "\\}");
 }
 
+async function requireAdmin(userId: string): Promise<string | null> {
+  if (!userId) return "Missing userId";
+  if (!supabaseAdmin) return "SUPABASE_SERVICE_KEY not configured";
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (error) return error.message;
+    const role = data.user.user_metadata?.role;
+    if (role !== "admin") return "Admin privileges required";
+    return null;
+  } catch (e: any) {
+    return e.message;
+  }
+}
 // ── Express App ───────────────────────────────────────────────────────────
 const app = express();
 
@@ -581,9 +593,204 @@ Return ONLY the raw JSON object.`,
     }
     
     res.json({ success: true, college });
+  }
+});
+
+// Auth endpoints
+app.post("/api/auth/profile", async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: "Missing userId" });
+  if (!supabaseAdmin) return res.json({ profile: { id: userId, role: "user", email: "" } });
+  try {
+    const { data: user, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (error) throw error;
+    const meta = user.user.user_metadata || {};
+    res.json({ profile: { id: userId, role: meta.role || "user", email: user.user.email } });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/auth/upgrade-admin", async (req, res) => {
+  const { userId, code } = req.body;
+  if (code !== adminSecretCode) return res.status(403).json({ error: "Invalid admin code." });
+  if (!userId) return res.status(400).json({ error: "Missing userId" });
+  if (!supabaseAdmin) return res.status(501).json({ error: "SUPABASE_SERVICE_KEY not set." });
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      user_metadata: { role: "admin" }
+    });
+    if (error) throw error;
+    const meta = data.user.user_metadata || {};
+    res.json({ profile: { id: userId, role: meta.role, email: data.user.email } });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/user/save-data", async (req, res) => {
+  const { userId, scholarships, internships, bookmarks, wonScholarships, dismissedNewIds, preferences, customColleges, suggestedColleges } = req.body;
+  if (!userId) return res.status(400).json({ error: "Missing userId" });
+  if (!supabaseAdmin) return res.json({ success: true });
+  try {
+    const { data: existing } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const existingMeta = existing?.user?.user_metadata || {};
+    await supabaseAdmin.auth.admin.updateUserById(userId, {
+      user_metadata: {
+        ...existingMeta,
+        ...(scholarships ? { savedScholarships: scholarships } : {}),
+        ...(internships ? { savedInternships: internships } : {}),
+        ...(bookmarks ? { bookmarks } : {}),
+        ...(wonScholarships ? { wonScholarships } : {}),
+        ...(dismissedNewIds ? { dismissedNewIds } : {}),
+        ...(preferences ? { preferences } : {}),
+        ...(customColleges ? { custom_colleges: customColleges } : {}),
+        ...(suggestedColleges ? { suggested_colleges: suggestedColleges } : {})
+      }
+    });
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/user/load-data", async (req, res) => {
+  const userId = req.query.userId as string;
+  if (!userId) return res.status(400).json({ error: "Missing userId" });
+  if (!supabaseAdmin) return res.json({});
+  try {
+    const { data: user, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (error) throw error;
+    res.json(user?.user?.user_metadata || {});
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Admin endpoints
+app.get("/api/admin/users", async (req, res) => {
+  if (!supabaseAdmin) return res.status(501).json({ error: "SUPABASE_SERVICE_KEY not set." });
+  const err = await requireAdmin(req.query.userId as string);
+  if (err) return res.status(403).json({ error: err });
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers();
+    if (error) throw error;
+    const users = data.users.map((u: any) => ({
+      id: u.id, email: u.email || "",
+      role: u.user_metadata?.role || "user",
+      created_at: u.created_at, last_sign_in: u.last_sign_in_at || null
+    }));
+    res.json({ users });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/admin/users/role", async (req, res) => {
+  const { userId, role } = req.body;
+  if (!userId) return res.status(400).json({ error: "Missing userId" });
+  if (!["user", "admin"].includes(role)) return res.status(400).json({ error: "Invalid role" });
+  if (!supabaseAdmin) return res.status(501).json({ error: "SUPABASE_SERVICE_KEY not set." });
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      user_metadata: { role }
+    });
+    if (error) throw error;
+    res.json({ success: true, user: { id: userId, email: data.user.email, role } });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/admin/promote-by-email", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Missing email" });
+  if (!supabaseAdmin) return res.status(501).json({ error: "SUPABASE_SERVICE_KEY not set." });
+  try {
+    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    if (listError) throw listError;
+    const user = users.users.find((u: any) => u.email === email);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      user_metadata: { role: "admin" }
+    });
+    if (error) throw error;
+    res.json({ success: true, user: { id: user.id, email: user.email, role: "admin" } });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// AI College Recommender
+app.post("/api/colleges/recommend", async (req, res) => {
+  const interests = sanitizeInput(req.body?.interests, MAX_QUERY_LENGTH);
+  if (!interests) return res.json({ matches: [], suggestions: [] });
+
+  const existingIds = new Set(collegesData.map((c: any) => c.id));
+
+  const keywordFallback = () => {
+    const q = interests.toLowerCase();
+    const matches = collegesData.filter((c: any) =>
+      c.name.toLowerCase().includes(q) ||
+      c.specialization.toLowerCase().includes(q) ||
+      c.tier.toLowerCase().includes(q) ||
+      c.location.toLowerCase().includes(q) ||
+      (q.includes("eng") && c.specialization === "Engineering") ||
+      ((q.includes("med") || q.includes("health")) && c.specialization === "Health") ||
+      ((q.includes("business") || q.includes("finance")) && c.specialization === "Business") ||
+      (q.includes("art") && c.specialization === "Arts") ||
+      (q.includes("humanities") && c.specialization === "Humanities")
+    ).map((c: any) => c.id);
+    return { matches, suggestions: [] };
+  };
+
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY") {
+    return res.json(keywordFallback());
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
+    const safeInterests = containUserText(interests);
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a college admissions advisor. Given a student's interests and the list of colleges below, identify:
+1. Which colleges from the list are a good fit (return their IDs)
+2. Suggest 1-3 additional colleges NOT in the list that would also be a great fit
+
+Return a JSON object with this exact structure:
+{
+  "matches": ["col-id1", "col-id2"],
+  "suggestions": [
+    { "name": "College Name", "tier": "Ivy League | Top Engineering | Top Public | Top Liberal Arts | Specialized Health", "specialization": "Engineering | Health | Business | Arts | Humanities | General", "location": "City, State", "tuitionSticker": 50000, "avgAidPackage": 30000, "deadlineED": "Nov 01", "deadlineRD": "Jan 01", "acceptanceRate": 10, "reason": "Why this college fits" }
+  ]
+}
+
+Student interests: "\${safeInterests}"
+
+Available colleges (id | name | tier | specialization | location | tuition | acceptance rate):
+\${collegesData.map((c: any) => \`- \${c.id}: \${c.name} (\${c.tier}, \${c.specialization}, \${c.location}, tuition \\\$\${c.tuitionSticker || c.tuition}, rate \${c.acceptanceRate}%)\`).join("\\n")}
+
+Return ONLY the JSON object — no other text.`,
+      config: { responseMimeType: "application/json", temperature: 0.1 }
+    });
+
+    let parsed: any = { matches: [], suggestions: [] };
+    try { parsed = JSON.parse(response.text || "{}"); }
+    catch { const m = (response.text || "").match(/\\{[\\s\\S]*\\}/); if (m) try { parsed = JSON.parse(m[0]); } catch {} }
+
+    let matches: string[] = Array.isArray(parsed.matches) ? parsed.matches : [];
+    matches = matches.filter((id: string) => existingIds.has(id));
+
+    let suggestions: any[] = [];
+    if (Array.isArray(parsed.suggestions)) {
+      suggestions = parsed.suggestions.map((s: any, i: number) => ({
+        id: "col-ai-suggest-" + Date.now() + "-" + i,
+        name: s.name || "Unknown College",
+        tier: s.tier || "Top Public",
+        specialization: s.specialization || "General",
+        location: s.location || "",
+        tuitionSticker: s.tuitionSticker || 40000,
+        avgAidPackage: s.avgAidPackage || 15000,
+        deadlineED: s.deadlineED || "Nov 01",
+        deadlineRD: s.deadlineRD || "Jan 01",
+        acceptanceRate: s.acceptanceRate || 10,
+        suggested: true,
+        reason: s.reason || ""
+      }));
+    }
+
+    res.json({ matches, suggestions });
   } catch (e: any) {
-    console.error("[College Lookup Error]", e.message);
-    res.status(500).json({ error: "Failed to look up college details via AI." });
+    console.error("[College Recommender] Error:", e.message);
+    res.json(keywordFallback());
   }
 });
 
@@ -592,5 +799,4 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   console.error("[Vercel Error]", err);
   res.status(500).json({ error: err?.message || "Internal Error" });
 });
-
 export default app;
