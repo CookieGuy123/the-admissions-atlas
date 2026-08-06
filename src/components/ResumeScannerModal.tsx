@@ -19,7 +19,11 @@ export default function ResumeScannerModal({ onClose, onData, data }: Props) {
     if (file.type === "text/plain") return await file.text();
     if (file.type === "application/pdf") {
       const arrayBuffer = await file.arrayBuffer();
-      const pdfjsLib = await import("pdfjs-dist");
+      const rawPdfjs = await import("pdfjs-dist/build/pdf.min.mjs");
+      const pdfjsLib = rawPdfjs.getDocument ? rawPdfjs : (rawPdfjs as any).default;
+      if (!pdfjsLib || !pdfjsLib.getDocument || !pdfjsLib.GlobalWorkerOptions) {
+        throw new Error("PDF parser failed to initialize");
+      }
       pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       let text = "";
