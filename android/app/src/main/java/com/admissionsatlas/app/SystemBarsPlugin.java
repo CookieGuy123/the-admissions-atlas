@@ -23,7 +23,10 @@ public class SystemBarsPlugin extends Plugin {
         boolean dark = Boolean.TRUE.equals(call.getBoolean("dark", true));
 
         int statusColor = dark ? Color.parseColor("#141218") : Color.parseColor("#ffffff");
-        int navColor    = dark ? Color.parseColor("#141218") : Color.parseColor("#ffffff");
+        // On Android < 8.0 (API 26), the OS cannot draw dark nav bar icons.
+        // Set the nav bar to black (#000000) on older devices in light mode so the white buttons remain visible.
+        int navColor = dark ? Color.parseColor("#141218") : 
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? Color.parseColor("#ffffff") : Color.parseColor("#000000"));
 
         getActivity().runOnUiThread(() -> {
             Window window = getActivity().getWindow();
