@@ -9,7 +9,7 @@
  * and an empty string (so relative URLs work) when running on the web.
  */
 
-const VERCEL_BASE = "https://the-admissions-atlas.vercel.app";
+const VERCEL_BASE = "https://theadmissionsatlas.zaaminkhan.com";
 
 function isCapacitor(): boolean {
   // Capacitor sets window.Capacitor, and the protocol is capacitor: or http://localhost
