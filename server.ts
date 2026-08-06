@@ -823,7 +823,7 @@ Return ONLY a raw JSON object (no markdown) with these fields:
         if (profile.gradeLevel && s.studentLevel === "both") score += 2;
         if (profile.majors && profile.majors.some((m: string) => s.fieldOfStudy.toLowerCase().includes(m.toLowerCase()) || m.toLowerCase().includes(s.fieldOfStudy.toLowerCase()))) score += 2;
         if (profile.extracurriculars && profile.extracurriculars.some((e: string) => s.requirements.some((r: string) => r.toLowerCase().includes(e.toLowerCase())))) score += 1;
-        if (!s.scamFlag) score += 1;
+        if (score > 0 && !s.scamFlag) score += 1; // Only add verification bonus if it matches something
         return { ...s, matchScore: score };
       }).filter(s => s.matchScore > 0).sort((a, b) => b.matchScore - a.matchScore).slice(0, 6);
 
@@ -834,7 +834,7 @@ Return ONLY a raw JSON object (no markdown) with these fields:
         if (profile.majors && profile.majors.some((m: string) => i.fieldOfStudy.toLowerCase().includes(m.toLowerCase()) || i.description.toLowerCase().includes(m.toLowerCase()))) score += 2;
         if (profile.skills && profile.skills.some((sk: string) => i.requirements.some((r: string) => r.toLowerCase().includes(sk.toLowerCase())))) score += 1;
         if (profile.extracurriculars && profile.extracurriculars.some((e: string) => i.description.toLowerCase().includes(e.toLowerCase()))) score += 1;
-        if (!i.scamFlag) score += 1;
+        if (score > 0 && !i.scamFlag) score += 1; // Only add verification bonus if it matches something
         return { ...i, matchScore: score };
       }).filter(i => i.matchScore > 0).sort((a, b) => b.matchScore - a.matchScore).slice(0, 6);
 
