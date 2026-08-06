@@ -74,9 +74,7 @@ export default function App() {
     document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("aid_dark", String(darkMode));
     // Custom plugin: sync status bar and navigation bar (gesture bar) color and icons dynamically
-    SystemBars.setDarkMode({ dark: darkMode })
-      .then(() => console.log("[SystemBars] setDarkMode native call succeeded. Dark mode:", darkMode))
-      .catch((err) => console.error("[SystemBars] SystemBars.setDarkMode failed:", err));
+    SystemBars.setDarkMode({ dark: darkMode }).catch(() => {});
   }, [darkMode]);
   useEffect(() => { localStorage.setItem("aid_wide", String(wideMode)); }, [wideMode]);
   useEffect(() => { localStorage.setItem("aid_gradient", resolvedGradient); }, [resolvedGradient]);
