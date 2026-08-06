@@ -22,7 +22,7 @@ export default function ToastContainer({
   onDismiss: (id: string) => void;
 }) {
   return (
-    <div className="fixed top-4 right-4 z-[200] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div className="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-[200] flex flex-col gap-2 pointer-events-none">
       {toasts.map(t => (
         <div key={t.id}>
           <InnerToast toast={t} onDismiss={onDismiss} />

@@ -674,11 +674,11 @@ function AiSearchDialog({ type, onClose, onSearch, query, setQuery, loading }: {
           <button onClick={onClose} className="m3-btn-text p-2"><X className="w-5 h-5" /></button>
         </div>
         <div className="px-6 pb-5">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && !loading && onSearch()}
               className="m3-field flex-1" placeholder="e.g. STEM, engineering, arts..." />
-            <button onClick={onSearch} disabled={loading} className="m3-btn-filled text-sm px-5 py-2 shrink-0">
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Search</> : <><Sparkles className="w-4 h-4" /> Search</>}
+            <button onClick={onSearch} disabled={loading} className="m3-btn-filled text-sm px-5 py-2 w-full sm:w-auto shrink-0 justify-center flex items-center gap-1.5">
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> <span>Search</span></> : <><Sparkles className="w-4 h-4" /> <span>Search</span></>}
             </button>
           </div>
           <p className="text-xs text-on-surface-variant mt-2">AI will search the web for legitimate {type} matching your query.</p>
