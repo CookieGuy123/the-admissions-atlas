@@ -14,6 +14,11 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "SystemBars")
 public class SystemBarsPlugin extends Plugin {
 
+    @Override
+    public void load() {
+        android.util.Log.d("SystemBars", "SystemBars plugin loaded and registered successfully!");
+    }
+
     /**
      * Called from JS: SystemBars.setDarkMode({ dark: true/false })
      * Sets status bar AND navigation bar colors + icon appearance.
@@ -21,6 +26,7 @@ public class SystemBarsPlugin extends Plugin {
     @PluginMethod
     public void setDarkMode(PluginCall call) {
         boolean dark = Boolean.TRUE.equals(call.getBoolean("dark", true));
+        android.util.Log.d("SystemBars", "setDarkMode invoked natively, dark = " + dark);
 
         int statusColor = dark ? Color.parseColor("#141218") : Color.parseColor("#ffffff");
         int navColor    = dark ? Color.parseColor("#141218") : Color.parseColor("#ffffff");
