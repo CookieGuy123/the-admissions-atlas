@@ -31,15 +31,6 @@ export default function AuthModal({ open, onClose, onAuthSuccess }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError(null); setSuccess(null);
-
-    // Validate Supabase configuration is present before calling API
-    const hasConfig = import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
-    if (!hasConfig) {
-      setError("Auth is disabled: Supabase credentials are missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.");
-      setLoading(false);
-      return;
-    }
-
     try {
       if (mode === "signup") {
         const { error: signUpError } = await supabase.auth.signUp({ email, password, options: { data: { role: "user" } } });
