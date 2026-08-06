@@ -170,12 +170,27 @@ export default function App() {
     saveDataToCloud();
     lastSavedStateRef.current = current;
   }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, scholarships, internships, darkMode, resolvedGradient, dataLoaded, user, initialCloudLoadDone]);
-
   // Re-trigger cloud load when user becomes available (fixes race with getSession)
   useEffect(() => {
     if (dataLoaded && user) {
       loadDataFromCloud();
     }
+  }, [dataLoaded, user]);
+
+  // Synchronize from cloud when app gains focus or returns to foreground
+  useEffect(() => {
+    if (!dataLoaded || !user) return;
+    const handleSyncOnFocus = () => {
+      if (document.visibilityState === "visible") {
+        loadDataFromCloud();
+      }
+    };
+    document.addEventListener("visibilitychange", handleSyncOnFocus);
+    window.addEventListener("focus", handleSyncOnFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", handleSyncOnFocus);
+      window.removeEventListener("focus", handleSyncOnFocus);
+    };
   }, [dataLoaded, user]);
 
   // Deadline alerts — check every 30 minutes, avoids duplicate alerts
@@ -260,6 +275,7 @@ export default function App() {
 
   const loadDataFromCloud = async () => {
     if (!user) return;
+    setInitialCloudLoadDone(false);
     try {
       const res = await apiFetch(`/api/user/load-data?userId=${user.id}`);
       if (!res.ok) throw new Error("Load failed");
