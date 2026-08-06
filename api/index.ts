@@ -593,6 +593,8 @@ Return ONLY the raw JSON object.`,
     }
     
     res.json({ success: true, college });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Failed to lookup college" });
   }
 });
 
@@ -753,10 +755,10 @@ Return a JSON object with this exact structure:
   ]
 }
 
-Student interests: "\${safeInterests}"
+Student interests: "${safeInterests}"
 
 Available colleges (id | name | tier | specialization | location | tuition | acceptance rate):
-\${collegesData.map((c: any) => \`- \${c.id}: \${c.name} (\${c.tier}, \${c.specialization}, \${c.location}, tuition \\\$\${c.tuitionSticker || c.tuition}, rate \${c.acceptanceRate}%)\`).join("\\n")}
+${collegesData.map((c: any) => `- ${c.id}: ${c.name} (${c.tier}, ${c.specialization}, ${c.location}, tuition $${c.tuitionSticker || c.tuition}, rate ${c.acceptanceRate}%)`).join("\n")}
 
 Return ONLY the JSON object — no other text.`,
       config: { responseMimeType: "application/json", temperature: 0.1 }

@@ -5,6 +5,10 @@ import { supabase } from "../../../supabaseClient";
 import { apiFetch } from "../../../lib/api";
 
 interface Props {
+  customColleges: any[];
+  setCustomColleges: React.Dispatch<React.SetStateAction<any[]>>;
+  suggestedColleges: any[];
+  setSuggestedColleges: React.Dispatch<React.SetStateAction<any[]>>;
   onSelectCollege?: (college: any) => void;
 }
 
@@ -16,54 +20,20 @@ const tierColors: Record<string, string> = {
   "Specialized Health": "bg-error-container text-error",
 };
 
-export default function DeadlinesPanel({ onSelectCollege }: Props) {
+export default function DeadlinesPanel({
+  customColleges,
+  setCustomColleges,
+  suggestedColleges,
+  setSuggestedColleges,
+  onSelectCollege
+}: Props) {
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState("all");
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState({ name: "", location: "", acceptanceRate: "", tuitionSticker: "", avgAidPackage: "", deadlineED: "", deadlineRD: "" });
-  const [customColleges, setCustomColleges] = useState<any[]>(() => {
-    try { return JSON.parse(localStorage.getItem("aid_custom_colleges") || "[]"); } catch { return []; }
-  });
-
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
-  const [suggestedColleges, setSuggestedColleges] = useState<any[]>(() => {
-    try { return JSON.parse(localStorage.getItem("aid_suggested_colleges") || "[]"); } catch { return []; }
-  });
-
-  // Load colleges from Supabase on mount
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        apiFetch(`/api/user/load-data?userId=${session.user.id}`).then(r => r.json()).then(d => {
-          if (d.success) {
-            if (d.customColleges?.length) setCustomColleges(d.customColleges);
-            if (d.suggestedColleges?.length) setSuggestedColleges(d.suggestedColleges);
-          }
-        }).catch(() => {});
-      }
-    });
-  }, []);
-
-  // Debounced persist to localStorage and Supabase on change
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      localStorage.setItem("aid_custom_colleges", JSON.stringify(customColleges));
-      localStorage.setItem("aid_suggested_colleges", JSON.stringify(suggestedColleges));
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          apiFetch("/api/user/save-data", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: session.user.id, customColleges, suggestedColleges })
-          }).catch(() => {});
-        }
-      });
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [customColleges, suggestedColleges]);
 
   const handleAiRecommend = async () => {
     if (!aiQuery.trim()) return;
@@ -178,9 +148,9 @@ export default function DeadlinesPanel({ onSelectCollege }: Props) {
             }`}>
             <div className="p-4 pb-3">
               <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex-1 flex items-center gap-2 min-w-0">
                   <University className="w-5 h-5 text-primary shrink-0" />
-                  <h3 className="text-base font-semibold text-on-surface truncate">{c.name}</h3>
+                  <h3 className="text-base font-semibold text-on-surface truncate" title={c.name}>{c.name}</h3>
                   {suggestion && !suggestion.dismissed && <span className="m3-badge m3-badge-new text-[10px]">AI SUGGESTED</span>}
                 </div>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ml-2 ${tierColors[c.tier] || "bg-surface-dim text-on-surface-variant"}`}>

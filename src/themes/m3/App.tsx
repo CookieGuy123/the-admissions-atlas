@@ -71,7 +71,12 @@ export default function App() {
   const [selectedCollege, setSelectedCollege] = useState<any>(null);
   const [initialCloudLoadDone, setInitialCloudLoadDone] = useState(false);
   const lastSavedStateRef = useRef<string>("");
-
+  const [customColleges, setCustomColleges] = useState<any[]>(() => {
+    try { return JSON.parse(localStorage.getItem("aid_custom_colleges") || "[]"); } catch { return []; }
+  });
+  const [suggestedColleges, setSuggestedColleges] = useState<any[]>(() => {
+    try { return JSON.parse(localStorage.getItem("aid_suggested_colleges") || "[]"); } catch { return []; }
+  });
   const serializeState = (
     b: BookmarkedOpportunity[],
     ws: Scholarship[],
@@ -82,7 +87,9 @@ export default function App() {
     ints: Internship[],
     dark: boolean,
     wide: boolean,
-    grad: string
+    grad: string,
+    cc: any[],
+    sc: any[]
   ) => {
     const customSch = schs.filter(s => !defaultScholarships.some(ds => ds.id === s.id));
     const customInt = ints.filter(i => !defaultInternships.some(di => di.id === i.id));
@@ -94,6 +101,8 @@ export default function App() {
       preferences: { ...prefs, darkMode: dark, wideMode: wide, gradient: grad },
       scholarships: customSch,
       internships: customInt,
+      customColleges: cc,
+      suggestedColleges: sc,
     });
   };
 
@@ -145,10 +154,9 @@ export default function App() {
     setInternships(prev => prev.map(i => dismissedNewIds.includes(i.id) ? { ...i, isNew: false } : i));
   }, [dataLoaded, dismissedNewIds]);
 
-
   useEffect(() => {
     if (dataLoaded) saveLocalData();
-  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, scholarships, internships, dataLoaded]);
+  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, scholarships, internships, customColleges, suggestedColleges, dataLoaded]);
 
   // Cloud save for logged-in users
   useEffect(() => {
@@ -163,13 +171,16 @@ export default function App() {
       internships,
       darkMode,
       wideMode,
-      resolvedGradient
+      resolvedGradient,
+      customColleges,
+      suggestedColleges
     );
     if (lastSavedStateRef.current === current) return;
 
     saveDataToCloud();
     lastSavedStateRef.current = current;
-  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, scholarships, internships, darkMode, resolvedGradient, dataLoaded, user, initialCloudLoadDone]);
+  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, scholarships, internships, darkMode, resolvedGradient, dataLoaded, user, initialCloudLoadDone, customColleges, suggestedColleges]);
+
   // Re-trigger cloud load when user becomes available (fixes race with getSession)
   useEffect(() => {
     if (dataLoaded && user) {
@@ -245,6 +256,8 @@ export default function App() {
       localStorage.setItem("aid_won_internships", JSON.stringify(wonInternships));
       localStorage.setItem("aid_dismissed_new", JSON.stringify(dismissedNewIds));
       localStorage.setItem("aid_preferences", JSON.stringify(preferences));
+      localStorage.setItem("aid_custom_colleges", JSON.stringify(customColleges));
+      localStorage.setItem("aid_suggested_colleges", JSON.stringify(suggestedColleges));
     } catch {}
   };
 
@@ -266,6 +279,8 @@ export default function App() {
           wonScholarships: wonCombined,
           dismissedNewIds,
           preferences: { ...preferences, darkMode, wideMode, gradient: resolvedGradient },
+          customColleges,
+          suggestedColleges
         })
       });
     } catch (e) {
@@ -295,7 +310,9 @@ export default function App() {
           data.savedInternships || [],
           data.preferences?.darkMode ?? false,
           data.preferences?.wideMode ?? false,
-          data.preferences?.gradient ?? "none"
+          data.preferences?.gradient ?? "none",
+          data.customColleges || [],
+          data.suggestedColleges || []
         );
 
         // 2. Set React states
@@ -336,6 +353,8 @@ export default function App() {
           setWonScholarships(wsMerged);
           setWonInternships(wiMerged);
         }
+        if (data.customColleges?.length) setCustomColleges(data.customColleges);
+        if (data.suggestedColleges?.length) setSuggestedColleges(data.suggestedColleges);
       }
     } catch (e) {
       console.error("Cloud load failed", e);
@@ -349,6 +368,13 @@ export default function App() {
       const b = localStorage.getItem("aid_bookmarked");
       const ws = localStorage.getItem("aid_won_scholarships");
       const wi = localStorage.getItem("aid_won_internships");
+      const cc = localStorage.getItem("aid_custom_colleges");
+      const sc = localStorage.getItem("aid_suggested_colleges");
+      if (b) setBookmarked(JSON.parse(b));
+      if (ws) setWonScholarships(JSON.parse(ws));
+      if (wi) setWonInternships(JSON.parse(wi));
+      if (cc) setCustomColleges(JSON.parse(cc));
+      if (sc) setSuggestedColleges(JSON.parse(sc));
       const dn = localStorage.getItem("aid_dismissed_new");
       const pr = localStorage.getItem("aid_preferences");
       const cs = localStorage.getItem("aid_custom_scholarships");
@@ -685,7 +711,13 @@ export default function App() {
             onOpenAiSearch={() => { setAiSearchType("internships"); setAiSearchOpen(true); }}
           />
         ) : activeTab === "deadlines" ? (
-          <DeadlinesPanel onSelectCollege={handleSelectCollegeForCalc} />
+          <DeadlinesPanel
+            customColleges={customColleges}
+            setCustomColleges={setCustomColleges}
+            suggestedColleges={suggestedColleges}
+            setSuggestedColleges={setSuggestedColleges}
+            onSelectCollege={handleSelectCollegeForCalc}
+          />
         ) : activeTab === "calculator" ? (
           <AidCalculatorPanel initialCollege={selectedCollege} />
         ) : activeTab === "admin" ? (

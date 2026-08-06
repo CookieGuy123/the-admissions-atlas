@@ -41,7 +41,7 @@ export default function AuthModal({ open, onClose, onAuthSuccess }: AuthModalPro
           password,
           options: {
             data: { role: "user" },
-            redirectTo: "https://theadmissionsatlas.zaaminkhan.com"
+            emailRedirectTo: "https://theadmissionsatlas.zaaminkhan.com"
           }
         });
         if (signUpError) throw signUpError;
