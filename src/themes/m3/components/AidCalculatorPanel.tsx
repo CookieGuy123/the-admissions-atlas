@@ -27,12 +27,38 @@ export default function AidCalculatorPanel({ initialCollege }: Props) {
     }
   }, [initialCollege]);
 
-  const loadCollege = (name: string) => {
-    const found = collegesData.find(c => c.name.toLowerCase().includes(name.toLowerCase()));
-    if (found) {
-      setCollegeName(found.name);
-      setTuition(String(found.tuitionSticker));
-      setLoadedCollege(found);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const loadCollege = async (name: string) => {
+    if (!name.trim()) return;
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const found = collegesData.find(c => c.name.toLowerCase().includes(name.toLowerCase()));
+      if (found) {
+        setCollegeName(found.name);
+        setTuition(String(found.tuitionSticker));
+        setGrants(String(found.avgAidPackage));
+        setLoadedCollege(found);
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch(`/api/colleges/lookup?name=${encodeURIComponent(name)}`);
+      const data = await res.json();
+      if (data.success && data.college) {
+        setCollegeName(data.college.name);
+        setTuition(String(data.college.tuitionSticker));
+        setGrants(String(data.college.avgAidPackage));
+        setLoadedCollege(data.college);
+      } else {
+        setErrorMsg("College not found or AI lookup failed.");
+      }
+    } catch {
+      setErrorMsg("Failed to connect to lookup service.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,11 +92,17 @@ export default function AidCalculatorPanel({ initialCollege }: Props) {
           <div>
             <label className="block text-sm font-medium text-on-surface mb-1">College</label>
             <div className="flex gap-2">
-              <input value={collegeName} onChange={e => setCollegeName(e.target.value)} onBlur={() => loadCollege(collegeName)}
+              <input value={collegeName} onChange={e => setCollegeName(e.target.value)}
                 className="m3-field flex-1" placeholder="Type name..." />
-              <button onClick={() => loadCollege(collegeName)} className="m3-btn-outlined text-sm px-4 py-2">Look up</button>
+              <button onClick={() => loadCollege(collegeName)} disabled={loading} className="m3-btn-outlined text-sm px-4 py-2 flex items-center gap-1.5">
+                {loading ? <span className="animate-spin w-3 h-3 border-2 border-primary border-t-transparent rounded-full" /> : null}
+                {loading ? "Looking up..." : "Look up"}
+              </button>
             </div>
-            {loadedCollege && (
+            {errorMsg && (
+              <p className="text-xs text-error mt-1 font-medium">{errorMsg}</p>
+            )}
+            {loadedCollege && !loading && (
               <p className="text-xs text-secondary mt-1 font-medium">
                 Loaded: {loadedCollege.name} — avg aid ${loadedCollege.avgAidPackage.toLocaleString()}
               </p>

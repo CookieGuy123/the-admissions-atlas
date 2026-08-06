@@ -132,7 +132,7 @@ const defaultScholarships: Scholarship[] = [
     organization: "Horatio Alger Association",
     amount: "$2,500 total",
     amountNumeric: 2500,
-    deadline: "2026-06-15",
+    deadline: "2027-06-15",
     studentLevel: "college",
     ageFilter: "All eligible",
     isFree: true,
@@ -944,6 +944,67 @@ Return ONLY a raw JSON object:
         item.deadlineType = "exact";
         return res.json({ success: true, item, error: e.message });
       }
+    }
+  });
+
+  // GET college lookup
+  app.get("/api/colleges/lookup", async (req, res) => {
+    const name = req.query.name as string;
+    if (!name) return res.status(400).json({ error: "Missing college name" });
+    
+    // First, check if it's in our static list
+    const foundStatic = collegesData.find(c => c.name.toLowerCase().includes(name.toLowerCase()));
+    if (foundStatic) {
+      return res.json({ success: true, college: foundStatic });
+    }
+    
+    // If not found, use Gemini!
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY") {
+      return res.status(404).json({ error: "College not found in database, and AI service is offline." });
+    }
+    
+    try {
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `You are an expert college admissions assistant. Look up the tuition and financial aid data for: "${name}".
+Extract:
+1. Full official Name of the college
+2. Average annual tuition sticker price (as a number in USD, e.g., 55000)
+3. Average financial aid package awarded to students receiving aid (as a number in USD, e.g., 38000)
+4. Early Decision (ED) deadline (as a string, e.g. "Nov 01" or "None")
+5. Regular Decision (RD) deadline (as a string, e.g. "Jan 15" or "Jan 05")
+6. Location (City, State, e.g. "Austin, TX")
+7. Acceptance rate (as a percentage number, e.g. 15 for 15%)
+8. Tier: one of "Ivy League", "Top Engineering", "Top Public", "Top Liberal Arts", "Specialized Health", "General"
+
+Format the response EXACTLY as a raw JSON object with this template:
+{
+  "id": "col-ai-lookup-${Date.now()}",
+  "name": "College Name",
+  "tier": "General",
+  "specialization": "General",
+  "tuitionSticker": 55000,
+  "avgAidPackage": 38000,
+  "deadlineED": "Nov 01",
+  "deadlineRD": "Jan 15",
+  "location": "City, State",
+  "acceptanceRate": 15
+}
+Return ONLY the raw JSON object.`,
+        config: { responseMimeType: "application/json", temperature: 0.1 }
+      });
+      
+      let college = JSON.parse(response.text || "{}");
+      if (!college.name || !college.tuitionSticker) {
+        throw new Error("Invalid response from AI lookup");
+      }
+      
+      res.json({ success: true, college });
+    } catch (e: any) {
+      console.error("[College Lookup Error]", e.message);
+      res.status(500).json({ error: "Failed to look up college details via AI." });
     }
   });
 

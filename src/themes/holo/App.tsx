@@ -128,6 +128,7 @@ export default function App() {
     }
   }, [isLoading, dataLoaded]);
 
+
   useEffect(() => {
     if (session?.user) {
       const role = session.user.user_metadata?.role || "user";
@@ -136,7 +137,9 @@ export default function App() {
         return { id: session.user.id, email: session.user.email || "", role, created_at: "" };
       });
       syncAnonBookmarks(session.user.id);
-      syncLocalDataToCloud(session.user.id);
+      syncLocalDataToCloud(session.user.id).then(() => {
+        loadAllUserData();
+      });
     }
   }, [session]);
 

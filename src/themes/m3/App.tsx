@@ -184,13 +184,19 @@ export default function App() {
   const saveDataToCloud = async () => {
     if (!user) return;
     try {
+      const customSch = scholarships.filter(s => !defaultScholarships.some(ds => ds.id === s.id));
+      const customInt = internships.filter(i => !defaultInternships.some(di => di.id === i.id));
+      const wonCombined = [...wonScholarships, ...wonInternships];
+
       await apiFetch("/api/user/save-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
+          scholarships: customSch,
+          internships: customInt,
           bookmarks: bookmarked,
-          wonScholarships: Object.fromEntries(wonScholarships.map(s => [s.id, s.amountNumeric || 0])),
+          wonScholarships: wonCombined,
           dismissedNewIds,
           preferences: { ...preferences, darkMode, wideMode, gradient: resolvedGradient },
         })
@@ -210,6 +216,24 @@ export default function App() {
         if (data.dismissedNewIds?.length) setDismissedNewIds(data.dismissedNewIds);
         if (data.preferences) {
           setPreferences((p: UserPreferences) => ({ ...p, ...data.preferences }));
+        }
+        if (data.scholarships?.length) {
+          setScholarships(prev => {
+            const existing = new Set(prev.map(s => s.id));
+            const unique = data.scholarships.filter((s: Scholarship) => !existing.has(s.id));
+            return [...unique, ...prev];
+          });
+        }
+        if (data.internships?.length) {
+          setInternships(prev => {
+            const existing = new Set(prev.map(i => i.id));
+            const unique = data.internships.filter((i: Internship) => !existing.has(i.id));
+            return [...unique, ...prev];
+          });
+        }
+        if (data.wonScholarships?.length) {
+          setWonScholarships(data.wonScholarships.filter((item: any) => "name" in item));
+          setWonInternships(data.wonScholarships.filter((item: any) => !("name" in item)));
         }
       }
     } catch (e) {

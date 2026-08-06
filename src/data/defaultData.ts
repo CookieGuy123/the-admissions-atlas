@@ -107,7 +107,7 @@ export const defaultScholarships: Scholarship[] = [
     organization: "Horatio Alger Association",
     amount: "$2,500 total",
     amountNumeric: 2500,
-    deadline: "2026-06-15",
+    deadline: "2027-06-15",
     studentLevel: "both",
     ageFilter: "All eligible",
     isFree: true,
