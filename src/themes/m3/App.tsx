@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { apiFetch } from "../../lib/api";
+import { StatusBar, Style } from "@capacitor/status-bar";
 import { supabase } from "../../supabaseClient";
 import type { Scholarship, Internship, BookmarkedOpportunity, NotificationItem, UserPreferences, UserProfile } from "../../types";
 import ScholarshipsPanel from "./components/ScholarshipsPanel";
@@ -69,7 +70,13 @@ export default function App() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState<any>(null);
 
-  useEffect(() => { document.documentElement.classList.toggle("dark", darkMode); localStorage.setItem("aid_dark", String(darkMode)); }, [darkMode]);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+    localStorage.setItem("aid_dark", String(darkMode));
+    // Sync Android status bar and navigation bar to match dark/light mode
+    StatusBar.setStyle({ style: darkMode ? Style.Dark : Style.Light }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: darkMode ? "#141218" : "#ffffff" }).catch(() => {});
+  }, [darkMode]);
   useEffect(() => { localStorage.setItem("aid_wide", String(wideMode)); }, [wideMode]);
   useEffect(() => { localStorage.setItem("aid_gradient", resolvedGradient); }, [resolvedGradient]);
 
@@ -365,9 +372,7 @@ export default function App() {
         <div className={`mx-auto px-4 h-16 flex items-center justify-between ${wideMode ? "max-w-full" : "max-w-6xl"}`}>
           <div className="flex items-center gap-2 min-w-0">
             <img src={darkMode ? "/logo-dark.svg" : "/logo.svg"} alt="Atlas" className="w-8 h-8 rounded-xl shrink-0" />
-            {/* Full name on desktop, short name on mobile */}
-            <span className="hidden sm:block text-xl font-semibold tracking-tight text-on-surface whitespace-nowrap">The Admissions Atlas</span>
-            <span className="sm:hidden text-base font-semibold tracking-tight text-on-surface whitespace-nowrap">Atlas</span>
+            <span className="text-base sm:text-xl font-semibold tracking-tight text-on-surface whitespace-nowrap">The Admissions Atlas</span>
           </div>
           <div className="flex items-center gap-1">
             {/* Wide-mode toggle — desktop only (useless on mobile) */}
@@ -450,22 +455,22 @@ export default function App() {
                 <div className="m3-stat">
                   <Award className="w-4 h-4 text-secondary" />
                   <span className="m3-stat-value tabular-nums">{displayScholarships.length + displayInternships.length}</span>
-                  <span className="m3-stat-label">Opportunities</span>
+                  <span className="m3-stat-label">Total</span>
                 </div>
                 <div className="m3-stat">
                   <Bookmark className="w-4 h-4 text-tertiary" />
                   <span className="m3-stat-value tabular-nums">{bookmarkedCount}</span>
-                  <span className="m3-stat-label">Bookmarked</span>
+                  <span className="m3-stat-label">Saved</span>
                 </div>
                 <div className="m3-stat">
                   <DollarSign className="w-4 h-4 text-primary" />
                   <span className="m3-stat-value tabular-nums">${totalWonValue.toLocaleString()}</span>
-                  <span className="m3-stat-label">Won Value</span>
+                  <span className="m3-stat-label">Won</span>
                 </div>
                 <div className="m3-stat">
                   <Bell className={`w-4 h-4 ${dueThisMonth > 0 ? "text-error" : "text-outline"}`} />
                   <span className="m3-stat-value tabular-nums">{dueThisMonth}</span>
-                  <span className="m3-stat-label">Due Now</span>
+                  <span className="m3-stat-label">Due</span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
