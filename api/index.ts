@@ -657,7 +657,12 @@ app.get("/api/user/load-data", async (req, res) => {
   try {
     const { data: user, error } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (error) throw error;
-    res.json(user?.user?.user_metadata || {});
+    const meta = user?.user?.user_metadata || {};
+    res.json({
+      ...meta,
+      customColleges: meta.custom_colleges || [],
+      suggestedColleges: meta.suggested_colleges || [],
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
