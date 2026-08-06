@@ -101,9 +101,6 @@ export default function App() {
           <button onClick={handleStartWithResume} className={`${btn} text-base px-8 py-3`}>
             <Upload className="w-5 h-5" /> Upload Resume & Get Started
           </button>
-          <p className={`text-sm ${muted} max-w-lg mx-auto`}>
-            AI reads your PDF or text resume, extracts your profile, and scores matching scholarships and internships — all in seconds.
-          </p>
         </div>
 
         {/* How it works */}
