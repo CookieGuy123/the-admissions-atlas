@@ -41,6 +41,9 @@ public class SystemBarsPlugin extends Plugin {
 
             window.setStatusBarColor(statusColor);
             window.setNavigationBarColor(navColor);
+            
+            // Set decor view background color dynamically so it shows behind the transparent system bars in Android 15+
+            window.getDecorView().setBackgroundColor(statusColor);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 // API 30+: WindowInsetsController
