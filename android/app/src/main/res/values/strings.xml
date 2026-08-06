@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">The Admissions Atlas</string>
+    <string name="title_activity_main">The Admissions Atlas</string>
+    <string name="package_name">com.admissionsatlas.app</string>
+    <string name="custom_url_scheme">com.admissionsatlas.app</string>
+</resources>
