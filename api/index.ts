@@ -2,9 +2,7 @@ import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
 import cors from "cors";
-import { collegesData } from "../src/data/colleges";
-
-
+import { collegesData } from "./collegesData";
 // ── Types ─────────────────────────────────────────────────────────────────
 export interface Scholarship {
   id: string;
