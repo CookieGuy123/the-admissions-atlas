@@ -228,7 +228,22 @@ export default function App() {
         if (data.dismissedNewIds?.length) setDismissedNewIds(data.dismissedNewIds);
         if (data.preferences) {
           setPreferences((p: UserPreferences) => ({ ...p, ...data.preferences }));
+          if (typeof data.preferences.darkMode === "boolean") {
+            setDarkMode(data.preferences.darkMode);
+          }
+          if (data.preferences.gradient) {
+            const grad = data.preferences.gradient;
+            if (grad === "none") {
+              setGradient("none");
+            } else {
+              const isBot = grad.endsWith("-bot");
+              const cleanGrad = isBot ? grad.replace("-bot", "") : grad;
+              setGradient(cleanGrad);
+              setGradientDir(isBot ? "bottom" : "top");
+            }
+          }
         }
+
         if (data.savedScholarships?.length) {
           setScholarships(prev => {
             const existing = new Set(prev.map(s => s.id));
@@ -412,15 +427,16 @@ export default function App() {
             <span className="text-base sm:text-xl font-semibold tracking-tight text-on-surface whitespace-nowrap">The Admissions Atlas</span>
           </div>
           <div className="flex items-center gap-1">
-            {/* Wide-mode toggle — desktop only (useless on mobile) */}
-            <div className="hidden sm:block group relative">
-              <button onClick={() => setWideMode(!wideMode)} className="m3-btn-text p-2 gap-0" title={wideMode ? "Narrow layout" : "Wide layout"}>
-                {wideMode ? <Minimize2 className="w-4 h-4 shrink-0" /> : <Maximize2 className="w-4 h-4 shrink-0" />}
-                <span className="max-w-0 overflow-hidden group-hover:max-w-[60px] transition-all duration-200 whitespace-nowrap text-xs ml-1">
-                  {wideMode ? "Narrow" : "Wide"}
-                </span>
-              </button>
-            </div>
+            {!(window as any).Capacitor && (
+              <div className="hidden sm:block group relative">
+                <button onClick={() => setWideMode(!wideMode)} className="m3-btn-text p-2 gap-0" title={wideMode ? "Narrow layout" : "Wide layout"}>
+                  {wideMode ? <Minimize2 className="w-4 h-4 shrink-0" /> : <Maximize2 className="w-4 h-4 shrink-0" />}
+                  <span className="max-w-0 overflow-hidden group-hover:max-w-[60px] transition-all duration-200 whitespace-nowrap text-xs ml-1">
+                    {wideMode ? "Narrow" : "Wide"}
+                  </span>
+                </button>
+              </div>
+            )}
             <div className="group relative">
               <button onClick={() => setDarkMode(!darkMode)} className="m3-btn-text p-2 gap-0" title={darkMode ? "Light mode" : "Dark mode"}>
                 {darkMode ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}

@@ -77,12 +77,14 @@ export default function ProfilePanel({ user, profile, setProfile, preferences, s
                 }`}>
                 {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />} {darkMode ? "Light" : "Dark"}
               </button>
-              <button onClick={() => setWideMode(!wideMode)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border text-sm font-medium transition-all ${
-                  wideMode ? "bg-primary-container text-primary border-primary" : "border-outline-variant text-on-surface-variant"
-                }`}>
-                {wideMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />} {wideMode ? "Narrow" : "Wide"}
-              </button>
+              {!(window as any).Capacitor && (
+                <button onClick={() => setWideMode(!wideMode)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border text-sm font-medium transition-all ${
+                    wideMode ? "bg-primary-container text-primary border-primary" : "border-outline-variant text-on-surface-variant"
+                  }`}>
+                  {wideMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />} {wideMode ? "Narrow" : "Wide"}
+                </button>
+              )}
             </div>
 
             <div>
@@ -100,18 +102,6 @@ export default function ProfilePanel({ user, profile, setProfile, preferences, s
               <label className="block text-sm font-medium text-on-surface mb-1">Household Income</label>
               <input type="number" value={preferences.householdIncome} onChange={e => setPreferences(p => ({ ...p, householdIncome: parseInt(e.target.value) || 0 }))} className="m3-field w-full" />
             </div>
-
-            {user && (user.user_metadata?.role !== "admin") && (
-              <div className="border-t border-surface-dim pt-3 space-y-2">
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
-                  <Shield className="w-3 h-3" /> Admin
-                </p>
-                <div className="flex gap-2">
-                  <input value={adminCode} onChange={e => setAdminCode(e.target.value)} className="m3-field flex-1" placeholder="Admin code" type="password" />
-                  <button onClick={handleAdminUpgrade} className="m3-btn-outlined text-sm px-3 py-2">Upgrade</button>
-                </div>
-              </div>
-            )}
 
             <button onClick={() => { if (confirm("Reset all data?")) apiFetch("/api/reset", { method: "POST" }).then(() => location.reload()); }}
               className="m3-btn-outlined text-sm w-full py-2">
