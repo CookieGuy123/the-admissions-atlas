@@ -70,6 +70,32 @@ export default function App() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState<any>(null);
   const [initialCloudLoadDone, setInitialCloudLoadDone] = useState(false);
+  const lastSavedStateRef = useRef<string>("");
+
+  const serializeState = (
+    b: BookmarkedOpportunity[],
+    ws: Scholarship[],
+    wi: Internship[],
+    dn: string[],
+    prefs: UserPreferences,
+    schs: Scholarship[],
+    ints: Internship[],
+    dark: boolean,
+    wide: boolean,
+    grad: string
+  ) => {
+    const customSch = schs.filter(s => !defaultScholarships.some(ds => ds.id === s.id));
+    const customInt = ints.filter(i => !defaultInternships.some(di => di.id === i.id));
+    const wonCombined = [...ws, ...wi];
+    return JSON.stringify({
+      bookmarked: b,
+      wonScholarships: wonCombined,
+      dismissedNewIds: dn,
+      preferences: { ...prefs, darkMode: dark, wideMode: wide, gradient: grad },
+      scholarships: customSch,
+      internships: customInt,
+    });
+  };
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -126,9 +152,24 @@ export default function App() {
 
   // Cloud save for logged-in users
   useEffect(() => {
-    if (!dataLoaded || !user) return;
+    if (!dataLoaded || !user || !initialCloudLoadDone) return;
+    const current = serializeState(
+      bookmarked,
+      wonScholarships,
+      wonInternships,
+      dismissedNewIds,
+      preferences,
+      scholarships,
+      internships,
+      darkMode,
+      wideMode,
+      resolvedGradient
+    );
+    if (lastSavedStateRef.current === current) return;
+
     saveDataToCloud();
-  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, scholarships, internships, dataLoaded, user]);
+    lastSavedStateRef.current = current;
+  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, scholarships, internships, darkMode, resolvedGradient, dataLoaded, user, initialCloudLoadDone]);
 
   // Re-trigger cloud load when user becomes available (fixes race with getSession)
   useEffect(() => {
@@ -224,6 +265,24 @@ export default function App() {
       if (!res.ok) throw new Error("Load failed");
       const data = await res.json();
       if (data) {
+        const wsMerged = data.wonScholarships?.filter((item: any) => "name" in item) || [];
+        const wiMerged = data.wonScholarships?.filter((item: any) => !("name" in item)) || [];
+
+        // 1. Populate the ref first to prevent immediate save triggers
+        lastSavedStateRef.current = serializeState(
+          data.bookmarks || [],
+          wsMerged,
+          wiMerged,
+          data.dismissedNewIds || [],
+          data.preferences || { age: 0, studentLevel: "high_school", householdIncome: 0, fieldOfInterest: "" },
+          data.savedScholarships || [],
+          data.savedInternships || [],
+          data.preferences?.darkMode ?? false,
+          data.preferences?.wideMode ?? false,
+          data.preferences?.gradient ?? "none"
+        );
+
+        // 2. Set React states
         if (data.bookmarks?.length) setBookmarked(data.bookmarks);
         if (data.dismissedNewIds?.length) setDismissedNewIds(data.dismissedNewIds);
         if (data.preferences) {
@@ -243,7 +302,6 @@ export default function App() {
             }
           }
         }
-
         if (data.savedScholarships?.length) {
           setScholarships(prev => {
             const existing = new Set(prev.map(s => s.id));
@@ -259,8 +317,8 @@ export default function App() {
           });
         }
         if (data.wonScholarships?.length) {
-          setWonScholarships(data.wonScholarships.filter((item: any) => "name" in item));
-          setWonInternships(data.wonScholarships.filter((item: any) => !("name" in item)));
+          setWonScholarships(wsMerged);
+          setWonInternships(wiMerged);
         }
       }
     } catch (e) {
