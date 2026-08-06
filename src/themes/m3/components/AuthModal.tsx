@@ -38,9 +38,7 @@ export default function AuthModal({ open, onClose, onAuthSuccess }: Props) {
           password,
           options: {
             data: { role: "user" },
-            redirectTo: (window as any).Capacitor 
-              ? "https://theadmissionsatlas.zaaminkhan.com" 
-              : window.location.origin
+            redirectTo: "https://theadmissionsatlas.zaaminkhan.com"
           }
         });
         if (signUpError) throw signUpError;
