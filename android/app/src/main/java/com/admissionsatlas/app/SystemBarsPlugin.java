@@ -27,6 +27,12 @@ public class SystemBarsPlugin extends Plugin {
 
         getActivity().runOnUiThread(() -> {
             Window window = getActivity().getWindow();
+            
+            // Required to let us draw custom colors on status bar and navigation bar
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+
             window.setStatusBarColor(statusColor);
             window.setNavigationBarColor(navColor);
 
