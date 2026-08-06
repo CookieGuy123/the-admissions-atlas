@@ -131,17 +131,7 @@ const defaultScholarships: Scholarship[] = [
     sourceUrl: "https://www.tacobellfoundation.org", originalQuery: "Pre-seeded list",
     deadlineType: "estimated", lastVerifiedAt: "2026-06-06"
   },
-  {
-    id: "sch-horatio-alger-cte", name: "Horatio Alger Career & Technical Scholarship",
-    organization: "Horatio Alger Association",
-    amount: "$2,500 total", amountNumeric: 2500,
-    deadline: "2027-06-15", studentLevel: "both",
-    ageFilter: "All eligible", isFree: true, scamFlag: false, scamReason: "",
-    requirements: ["Under 35", "CTE program", "Financial need"],
-    isVerified: true, fieldOfStudy: "Vocational / CTE",
-    sourceUrl: "https://scholars.horatioalger.org", originalQuery: "Pre-seeded list",
-    deadlineType: "exact", lastVerifiedAt: "2026-06-06"
-  },
+
   {
     id: "sch-horatio-alger-national", name: "Horatio Alger National Scholarship",
     organization: "Horatio Alger Association",

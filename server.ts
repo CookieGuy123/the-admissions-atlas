@@ -126,24 +126,7 @@ const defaultScholarships: Scholarship[] = [
     sourceUrl: "https://www.tacobellfoundation.org/live-mas-scholarship/",
     originalQuery: "Pre-seeded list"
   },
-  {
-    id: "sch-horatio-alger-cte",
-    name: "Horatio Alger Career & Technical Scholarship",
-    organization: "Horatio Alger Association",
-    amount: "$2,500 total",
-    amountNumeric: 2500,
-    deadline: "2027-06-15",
-    studentLevel: "college",
-    ageFilter: "All eligible",
-    isFree: true,
-    scamFlag: false,
-    scamReason: "",
-    requirements: ["Financial need ($65k or less family income)", "Enrolled in associate's degree or certificate program", "Completed high school by July 1", "US Citizen"],
-    isVerified: true,
-    fieldOfStudy: "Any",
-    sourceUrl: "https://horatioalger.org/career-technical-education-scholarships/",
-    originalQuery: "Pre-seeded list"
-  },
+
   {
     id: "sch-horatio-alger-national",
     name: "Horatio Alger National Scholarship",
