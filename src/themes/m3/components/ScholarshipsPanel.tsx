@@ -145,16 +145,17 @@ export default function ScholarshipsPanel({ scholarships, setScholarships, isBoo
             </select>
             <label className="flex items-center gap-1.5 text-xs text-on-surface cursor-pointer px-2 py-1.5 rounded-lg bg-surface-dim/40 border border-surface-dim hover:bg-surface-dim/70 transition-colors">
               <input type="checkbox" checked={hideExpired} onChange={e => setHideExpired(e.target.checked)} className="rounded text-primary focus:ring-0" />
-              <span>Hide Expired</span>
+              <span className="hidden sm:inline">Hide Expired</span>
+              <span className="sm:hidden">Expired</span>
             </label>
-            <button onClick={resetFilters} className="m3-btn-text p-1.5 text-on-surface-variant hover:text-primary" title="Reset all filters">
+            <button onClick={resetFilters} className="m3-btn-text p-1.5 text-on-surface-variant hover:text-primary shrink-0" title="Reset all filters">
               <RotateCcw className="w-4 h-4" />
             </button>
-            <button onClick={onOpenAiSearch} className="m3-btn-filled text-sm px-4 py-2">
-              <Sparkles className="w-4 h-4" /> AI Search
+            <button onClick={onOpenAiSearch} className="m3-btn-filled p-2 sm:px-4 sm:py-2 shrink-0" title="AI Search">
+              <Sparkles className="w-4 h-4" /> <span className="hidden sm:inline text-sm">AI Search</span>
             </button>
-            <button onClick={() => setManualOpen(!manualOpen)} className="m3-btn-outlined text-sm px-4 py-2">
-              <Plus className="w-4 h-4" /> Add
+            <button onClick={() => setManualOpen(!manualOpen)} className="m3-btn-outlined p-2 sm:px-4 sm:py-2 shrink-0" title="Add scholarship">
+              <Plus className="w-4 h-4" /> <span className="hidden sm:inline text-sm">Add</span>
             </button>
           </div>
         </div>

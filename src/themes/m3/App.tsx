@@ -363,12 +363,15 @@ export default function App() {
       {/* Top App Bar */}
       <header className="bg-surface border-b border-surface-dim m3-elevation-1" style={{ zIndex: 10 }}>
         <div className={`mx-auto px-4 h-16 flex items-center justify-between ${wideMode ? "max-w-full" : "max-w-6xl"}`}>
-          <div className="flex items-center gap-3">
-            <img src={darkMode ? "/logo-dark.svg" : "/logo.svg"} alt="Atlas" className="w-8 h-8 rounded-xl" />
-            <span className="text-xl font-semibold tracking-tight text-on-surface">The Admissions Atlas</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <img src={darkMode ? "/logo-dark.svg" : "/logo.svg"} alt="Atlas" className="w-8 h-8 rounded-xl shrink-0" />
+            {/* Full name on desktop, short name on mobile */}
+            <span className="hidden sm:block text-xl font-semibold tracking-tight text-on-surface whitespace-nowrap">The Admissions Atlas</span>
+            <span className="sm:hidden text-base font-semibold tracking-tight text-on-surface whitespace-nowrap">Atlas</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="group relative">
+          <div className="flex items-center gap-1">
+            {/* Wide-mode toggle — desktop only (useless on mobile) */}
+            <div className="hidden sm:block group relative">
               <button onClick={() => setWideMode(!wideMode)} className="m3-btn-text p-2 gap-0" title={wideMode ? "Narrow layout" : "Wide layout"}>
                 {wideMode ? <Minimize2 className="w-4 h-4 shrink-0" /> : <Maximize2 className="w-4 h-4 shrink-0" />}
                 <span className="max-w-0 overflow-hidden group-hover:max-w-[60px] transition-all duration-200 whitespace-nowrap text-xs ml-1">
@@ -384,16 +387,17 @@ export default function App() {
                 </span>
               </button>
             </div>
-            <button onClick={() => setScanOpen(true)} className="m3-btn-text text-sm px-3 py-2">
-              <Upload className="w-4 h-4" /> <span className="hidden sm:inline">Upload Resume</span>
+            {/* Upload resume — icon only on mobile */}
+            <button onClick={() => setScanOpen(true)} className="m3-btn-text p-2 sm:px-3 sm:py-2">
+              <Upload className="w-4 h-4" /> <span className="hidden sm:inline text-sm">Upload Resume</span>
             </button>
             {user ? (
-              <button onClick={() => supabase.auth.signOut()} className="m3-btn-text text-sm px-3 py-2">
-                <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">{user.email?.split("@")[0]}</span>
+              <button onClick={() => supabase.auth.signOut()} className="m3-btn-text p-2 sm:px-3 sm:py-2">
+                <LogOut className="w-4 h-4" /> <span className="hidden sm:inline text-sm">{user.email?.split("@")[0]}</span>
               </button>
             ) : (
-              <button onClick={() => setAuthOpen(true)} className="m3-btn-filled text-sm px-4 py-2">
-                <LogIn className="w-4 h-4" /> <span className="hidden sm:inline">Sign in</span>
+              <button onClick={() => setAuthOpen(true)} className="m3-btn-filled p-2 sm:px-4 sm:py-2">
+                <LogIn className="w-4 h-4" /> <span className="hidden sm:inline text-sm">Sign in</span>
               </button>
             )}
           </div>
