@@ -3,7 +3,6 @@
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
@@ -13,14 +12,10 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
-        <!-- Navigation bar (gesture/button bar at bottom) — dark by default to match app -->
+        <!-- Navigation bar color — set here as default; JS plugin overrides dynamically -->
         <item name="android:navigationBarColor">#141218</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <!-- Status bar (top) — dark background, light icons -->
-        <item name="android:statusBarColor">#141218</item>
-        <item name="android:windowLightStatusBar">false</item>
     </style>
-
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
