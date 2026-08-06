@@ -39,7 +39,10 @@ export default function AuthModal({ open, onClose, onAuthSuccess }: AuthModalPro
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { role: "user" } }
+          options: {
+            data: { role: "user" },
+            redirectTo: "https://theadmissionsatlas.zaaminkhan.com"
+          }
         });
         if (signUpError) throw signUpError;
         setSuccess("Account created! Check your email to confirm, or try logging in.");
