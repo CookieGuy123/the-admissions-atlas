@@ -69,6 +69,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState<any>(null);
+  const [initialCloudLoadDone, setInitialCloudLoadDone] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -82,10 +83,19 @@ export default function App() {
   useEffect(() => {
     fetchInitialData();
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) { setUser(session.user); }
+      if (session?.user) { 
+        setUser(session.user); 
+      } else {
+        setInitialCloudLoadDone(true);
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
+      if (!session?.user) {
+        setInitialCloudLoadDone(false);
+      } else {
+        setInitialCloudLoadDone(false);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -109,15 +119,16 @@ export default function App() {
     setInternships(prev => prev.map(i => dismissedNewIds.includes(i.id) ? { ...i, isNew: false } : i));
   }, [dataLoaded, dismissedNewIds]);
 
+
   useEffect(() => {
     if (dataLoaded) saveLocalData();
-  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, dataLoaded]);
+  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, scholarships, internships, dataLoaded]);
 
   // Cloud save for logged-in users
   useEffect(() => {
     if (!dataLoaded || !user) return;
     saveDataToCloud();
-  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, dataLoaded, user]);
+  }, [bookmarked, wonScholarships, wonInternships, dismissedNewIds, preferences, scholarships, internships, dataLoaded, user]);
 
   // Re-trigger cloud load when user becomes available (fixes race with getSession)
   useEffect(() => {
@@ -210,24 +221,25 @@ export default function App() {
     if (!user) return;
     try {
       const res = await apiFetch(`/api/user/load-data?userId=${user.id}`);
+      if (!res.ok) throw new Error("Load failed");
       const data = await res.json();
-      if (data.success) {
+      if (data) {
         if (data.bookmarks?.length) setBookmarked(data.bookmarks);
         if (data.dismissedNewIds?.length) setDismissedNewIds(data.dismissedNewIds);
         if (data.preferences) {
           setPreferences((p: UserPreferences) => ({ ...p, ...data.preferences }));
         }
-        if (data.scholarships?.length) {
+        if (data.savedScholarships?.length) {
           setScholarships(prev => {
             const existing = new Set(prev.map(s => s.id));
-            const unique = data.scholarships.filter((s: Scholarship) => !existing.has(s.id));
+            const unique = data.savedScholarships.filter((s: Scholarship) => !existing.has(s.id));
             return [...unique, ...prev];
           });
         }
-        if (data.internships?.length) {
+        if (data.savedInternships?.length) {
           setInternships(prev => {
             const existing = new Set(prev.map(i => i.id));
-            const unique = data.internships.filter((i: Internship) => !existing.has(i.id));
+            const unique = data.savedInternships.filter((i: Internship) => !existing.has(i.id));
             return [...unique, ...prev];
           });
         }
@@ -238,6 +250,8 @@ export default function App() {
       }
     } catch (e) {
       console.error("Cloud load failed", e);
+    } finally {
+      setInitialCloudLoadDone(true);
     }
   };
 
